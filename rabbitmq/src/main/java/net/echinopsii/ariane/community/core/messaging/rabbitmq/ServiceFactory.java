@@ -17,13 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.messaging.rabbitmq;
+package net.echinopsii.ariane.community.core.messaging.rabbitmq;
 
 import akka.actor.ActorRef;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.QueueingConsumer;
-import net.echinopsii.ariane.community.messaging.api.*;
+import net.echinopsii.ariane.community.core.messaging.api.AppMsgFeeder;
+import net.echinopsii.ariane.community.core.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.core.messaging.api.MomConsumer;
+import net.echinopsii.ariane.community.core.messaging.api.MomServiceFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;

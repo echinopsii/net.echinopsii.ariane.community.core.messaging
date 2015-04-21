@@ -1,6 +1,5 @@
 /**
- * MoM client - init / close a MoM client
- *
+ * AppMsgWorker - work on a message
  * Copyright (C) 8/24/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,22 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.messaging.api;
+package net.echinopsii.ariane.community.core.messaging.api;
 
-import java.util.Properties;
+import java.util.Map;
 
-public interface MomClient {
-    public final static String MOM_CLI  = "mom_cli.impl";
-    public final static String MOM_HOST = "mom_host.fqdn";
-    public final static String MOM_PORT = "mom_host.port";
-
-    public String getClientID();
-
-    public void   init(Properties properties) throws Exception;
-    public void   close() throws Exception;
-
-    public Object getConnection();
-    public boolean isConnected();
-    public MomRequestExecutor createRequestExecutor();
-    public MomServiceFactory getServiceFactory();
+public interface AppMsgWorker {
+    /**
+     * apply business treatment to the message
+     * @param message to be applied
+     * @return answer msg
+     */
+    public Map<String, Object> apply(Map<String, Object> message);
 }

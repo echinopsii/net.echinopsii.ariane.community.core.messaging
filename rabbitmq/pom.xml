@@ -3,22 +3,22 @@
     <modelVersion>4.0.0</modelVersion>
     
     <parent>
-        <groupId>net.echinopsii.ariane.community</groupId>
-	    <artifactId>net.echinopsii.ariane.community.messaging</artifactId>
+        <groupId>net.echinopsii.ariane.community.core</groupId>
+	    <artifactId>net.echinopsii.ariane.community.core.messaging</artifactId>
         <version>0.1.0-SNAPSHOT</version>
         <relativePath>..</relativePath>
     </parent>
 
     <!-- General information -->
-    <groupId>net.echinopsii.ariane.community.messaging</groupId>
-    <artifactId>net.echinopsii.ariane.community.messaging.rabbitmq</artifactId>
+    <groupId>net.echinopsii.ariane.community.core.messaging</groupId>
+    <artifactId>net.echinopsii.ariane.community.core.messaging.rabbitmq</artifactId>
     <name>Ariane Community Messaging : Pattern MoM RabbitMQ impl</name>
     <packaging>bundle</packaging>
 
     <dependencies>
         <dependency>
-            <groupId>net.echinopsii.ariane.community.messaging</groupId>
-            <artifactId>net.echinopsii.ariane.community.messaging.api</artifactId>
+            <groupId>net.echinopsii.ariane.community.core.messaging</groupId>
+            <artifactId>net.echinopsii.ariane.community.core.messaging.api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

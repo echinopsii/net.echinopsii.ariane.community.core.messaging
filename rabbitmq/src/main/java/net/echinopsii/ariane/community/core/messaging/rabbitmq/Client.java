@@ -17,16 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.messaging.rabbitmq;
+package net.echinopsii.ariane.community.core.messaging.rabbitmq;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-import net.echinopsii.ariane.community.messaging.api.MomClient;
-import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
-import net.echinopsii.ariane.community.messaging.api.MomService;
-import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
+import net.echinopsii.ariane.community.core.messaging.api.MomClient;
+import net.echinopsii.ariane.community.core.messaging.api.MomRequestExecutor;
+import net.echinopsii.ariane.community.core.messaging.api.MomService;
+import net.echinopsii.ariane.community.core.messaging.api.MomServiceFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,22 +36,11 @@ import java.util.Properties;
 
 public class Client implements MomClient {
 
-    public static final String PROP_PRODUCT_KEY = "mom_cli.rabbitmq.product";
-    public static final String RBQ_PRODUCT_KEY  = "product";
-
-    public static final String PROP_INFORMATION_KEY = "mom_cli.rabbitmq.information";
-    public static final String RBQ_INFORMATION_KEY  = "information";
-
-    public static final String PROP_PLATFORM_KEY = "mom_cli.rabbitmq.platform";
-    public static final String RBQ_PLATFORM_KEY  = "platform";
-
-    public static final String PROP_COPYRIGHT_KEY = "mom_cli.rabbitmq.copyright";
-    public static final String RBQ_COPYRIGHT_KEY  = "copyright";
-
-    public static final String PROP_VERSION_KEY = "mom_cli.rabbitmq.version";
-    public static final String RBQ_VERSION_KEY  = "version";
-
-    public static final String PROP_ARIANE_KEYS  = "ariane";
+    public static final String RBQ_PRODUCT_KEY     = "product";
+    public static final String RBQ_INFORMATION_KEY = "information";
+    public static final String RBQ_PLATFORM_KEY    = "platform";
+    public static final String RBQ_COPYRIGHT_KEY   = "copyright";
+    public static final String RBQ_VERSION_KEY     = "version";
 
     private MomServiceFactory serviceFactory ;
     private List<MomRequestExecutor> requestExecutors = new ArrayList<MomRequestExecutor>();
@@ -66,27 +55,31 @@ public class Client implements MomClient {
         factory = new ConnectionFactory();
         factory.setHost((String) properties.get(MOM_HOST));
         factory.setPort(new Integer((String)properties.get(MOM_PORT)));
+        if (properties.get(MOM_USER)!=null)
+            factory.setUsername((String)properties.get(MOM_USER));
+        if (properties.get(MOM_PSWD)!=null)
+            factory.setPassword((String)properties.get(MOM_PSWD));
 
         Map<String, Object> factoryProperties = factory.getClientProperties();
-        if (properties.getProperty(PROP_PRODUCT_KEY)!=null)
-            factoryProperties.put(RBQ_PRODUCT_KEY,properties.getProperty(PROP_PRODUCT_KEY));
-        if (properties.getProperty(PROP_INFORMATION_KEY)!=null) {
-            clientID = properties.getProperty(PROP_INFORMATION_KEY);
+        if (properties.getProperty(MomClient.RBQ_PRODUCT_KEY)!=null)
+            factoryProperties.put(RBQ_PRODUCT_KEY,properties.getProperty(MomClient.RBQ_PRODUCT_KEY));
+        if (properties.getProperty(MomClient.RBQ_INFORMATION_KEY)!=null) {
+            clientID = properties.getProperty(MomClient.RBQ_INFORMATION_KEY);
             factoryProperties.put(RBQ_INFORMATION_KEY, clientID);
         } else {
             clientID = (String)properties.get(RBQ_INFORMATION_KEY);
         }
-        if (properties.getProperty(PROP_PLATFORM_KEY)!=null)
-            factoryProperties.put(RBQ_PLATFORM_KEY,properties.getProperty(PROP_PLATFORM_KEY));
+        if (properties.getProperty(MomClient.RBQ_PLATFORM_KEY)!=null)
+            factoryProperties.put(RBQ_PLATFORM_KEY,properties.getProperty(MomClient.RBQ_PLATFORM_KEY));
         else
             factoryProperties.put(RBQ_PLATFORM_KEY, "Java " + System.getProperty("java.version"));
-        if (properties.getProperty(PROP_COPYRIGHT_KEY)!=null)
-            factoryProperties.put(RBQ_COPYRIGHT_KEY, properties.getProperty(PROP_COPYRIGHT_KEY));
-        if (properties.getProperty(PROP_VERSION_KEY)!=null)
-            factoryProperties.put(RBQ_VERSION_KEY, properties.getProperty(PROP_VERSION_KEY));
+        if (properties.getProperty(MomClient.RBQ_COPYRIGHT_KEY)!=null)
+            factoryProperties.put(RBQ_COPYRIGHT_KEY, properties.getProperty(MomClient.RBQ_COPYRIGHT_KEY));
+        if (properties.getProperty(MomClient.RBQ_VERSION_KEY)!=null)
+            factoryProperties.put(RBQ_VERSION_KEY, properties.getProperty(MomClient.RBQ_VERSION_KEY));
 
         for (Object key : properties.keySet())
-            if (key instanceof String && ((String)key).startsWith(PROP_ARIANE_KEYS))
+            if (key instanceof String && ((String)key).startsWith(MomClient.ARIANE_KEYS))
                 factoryProperties.put((String)key, properties.getProperty((String)key));
 
         connection = factory.newConnection();

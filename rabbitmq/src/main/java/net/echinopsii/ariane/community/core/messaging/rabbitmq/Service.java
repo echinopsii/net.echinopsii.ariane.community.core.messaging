@@ -17,13 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.messaging.rabbitmq;
+package net.echinopsii.ariane.community.core.messaging.rabbitmq;
 
 import akka.actor.ActorRef;
 import akka.actor.Cancellable;
-import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder;
-import net.echinopsii.ariane.community.messaging.api.MomConsumer;
-import net.echinopsii.ariane.community.messaging.api.MomService;
+import net.echinopsii.ariane.community.core.messaging.api.AppMsgFeeder;
+import net.echinopsii.ariane.community.core.messaging.api.MomConsumer;
+import net.echinopsii.ariane.community.core.messaging.api.MomService;
 import scala.concurrent.duration.Duration;
 
 import java.util.concurrent.TimeUnit;

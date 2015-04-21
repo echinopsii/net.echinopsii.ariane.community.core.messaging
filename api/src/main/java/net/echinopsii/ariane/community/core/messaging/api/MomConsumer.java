@@ -1,7 +1,7 @@
 /**
  * [DEFINE YOUR PROJECT NAME/MODULE HERE]
  * [DEFINE YOUR PROJECT DESCRIPTION HERE] 
- * Copyright (C) 8/27/14 echinopsii
+ * Copyright (C) 8/25/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,18 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.messaging.api;
+package net.echinopsii.ariane.community.core.messaging.api;
 
-public interface MomService<A> {
-
-    public MomConsumer getConsumer();
-    public MomService setConsumer(MomConsumer consumer);
-
-    public A getMsgWorker();
-    public MomService setMsgWorker(A actorRef);
-
-    public A getMsgFeeder();
-    public MomService setMsgFeeder(A actorRef, int schedulerInterval);
-
-    public void stop();
+public interface MomConsumer extends Runnable {
+    public boolean isRunning();
+    public void    start();
+    public void    stop();
 }

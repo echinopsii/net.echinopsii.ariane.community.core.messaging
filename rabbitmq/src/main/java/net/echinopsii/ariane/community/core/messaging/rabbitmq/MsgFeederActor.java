@@ -17,14 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.messaging.rabbitmq;
+package net.echinopsii.ariane.community.core.messaging.rabbitmq;
 
 import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.japi.Creator;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
-import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder;
+import net.echinopsii.ariane.community.core.messaging.api.AppMsgFeeder;
 
 import java.io.IOException;
 import java.util.Map;

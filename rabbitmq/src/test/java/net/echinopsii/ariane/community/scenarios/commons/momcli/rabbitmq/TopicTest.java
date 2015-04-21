@@ -19,7 +19,7 @@
 
 package net.echinopsii.ariane.community.scenarios.commons.momcli.rabbitmq;
 
-import net.echinopsii.ariane.community.messaging.api.*;
+import net.echinopsii.ariane.community.core.messaging.api.*;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -39,7 +39,7 @@ public class TopicTest {
         props.put(MomClient.MOM_HOST, "localhost");
         props.put(MomClient.MOM_PORT, 5672);
 
-        client = MomClientFactory.make("net.echinopsii.ariane.community.messaging.rabbitmq.Client");
+        client = MomClientFactory.make("net.echinopsii.ariane.community.core.messaging.rabbitmq.Client");
 
         try {
             client.init(props);

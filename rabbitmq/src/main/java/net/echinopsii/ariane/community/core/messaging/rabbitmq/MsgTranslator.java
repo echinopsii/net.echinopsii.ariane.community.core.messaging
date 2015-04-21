@@ -17,12 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.messaging.rabbitmq;
+package net.echinopsii.ariane.community.core.messaging.rabbitmq;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Envelope;
-import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
+import net.echinopsii.ariane.community.core.messaging.api.MomMsgTranslator;
 
 import java.util.Date;
 import java.util.HashMap;
