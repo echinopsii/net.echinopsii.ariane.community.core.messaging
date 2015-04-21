@@ -29,10 +29,7 @@ import net.echinopsii.ariane.community.core.messaging.api.MomService;
 import net.echinopsii.ariane.community.core.messaging.api.MomServiceFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 public class Client implements MomClient {
 
@@ -51,7 +48,13 @@ public class Client implements MomClient {
     private Connection        connection = null;
 
     @Override
-    public void init(Properties properties) throws IOException {
+    public void init(Properties properties) throws Exception {
+        Dictionary props = new Properties(properties);
+        init(props);
+    }
+
+    @Override
+    public void init(Dictionary properties) throws Exception {
         factory = new ConnectionFactory();
         factory.setHost((String) properties.get(MOM_HOST));
         factory.setPort(new Integer((String)properties.get(MOM_PORT)));
@@ -61,26 +64,28 @@ public class Client implements MomClient {
             factory.setPassword((String)properties.get(MOM_PSWD));
 
         Map<String, Object> factoryProperties = factory.getClientProperties();
-        if (properties.getProperty(MomClient.RBQ_PRODUCT_KEY)!=null)
-            factoryProperties.put(RBQ_PRODUCT_KEY,properties.getProperty(MomClient.RBQ_PRODUCT_KEY));
-        if (properties.getProperty(MomClient.RBQ_INFORMATION_KEY)!=null) {
-            clientID = properties.getProperty(MomClient.RBQ_INFORMATION_KEY);
+        if (properties.get(MomClient.RBQ_PRODUCT_KEY)!=null)
+            factoryProperties.put(RBQ_PRODUCT_KEY,properties.get(MomClient.RBQ_PRODUCT_KEY));
+        if (properties.get(MomClient.RBQ_INFORMATION_KEY)!=null) {
+            clientID = (String)properties.get(MomClient.RBQ_INFORMATION_KEY);
             factoryProperties.put(RBQ_INFORMATION_KEY, clientID);
         } else {
             clientID = (String)properties.get(RBQ_INFORMATION_KEY);
         }
-        if (properties.getProperty(MomClient.RBQ_PLATFORM_KEY)!=null)
-            factoryProperties.put(RBQ_PLATFORM_KEY,properties.getProperty(MomClient.RBQ_PLATFORM_KEY));
+        if (properties.get(MomClient.RBQ_PLATFORM_KEY)!=null)
+            factoryProperties.put(RBQ_PLATFORM_KEY,properties.get(MomClient.RBQ_PLATFORM_KEY));
         else
             factoryProperties.put(RBQ_PLATFORM_KEY, "Java " + System.getProperty("java.version"));
-        if (properties.getProperty(MomClient.RBQ_COPYRIGHT_KEY)!=null)
-            factoryProperties.put(RBQ_COPYRIGHT_KEY, properties.getProperty(MomClient.RBQ_COPYRIGHT_KEY));
-        if (properties.getProperty(MomClient.RBQ_VERSION_KEY)!=null)
-            factoryProperties.put(RBQ_VERSION_KEY, properties.getProperty(MomClient.RBQ_VERSION_KEY));
+        if (properties.get(MomClient.RBQ_COPYRIGHT_KEY)!=null)
+            factoryProperties.put(RBQ_COPYRIGHT_KEY, properties.get(MomClient.RBQ_COPYRIGHT_KEY));
+        if (properties.get(MomClient.RBQ_VERSION_KEY)!=null)
+            factoryProperties.put(RBQ_VERSION_KEY, properties.get(MomClient.RBQ_VERSION_KEY));
 
-        for (Object key : properties.keySet())
+        while(properties.keys().hasMoreElements()) {
+            Object key = properties.keys().hasMoreElements();
             if (key instanceof String && ((String)key).startsWith(MomClient.ARIANE_KEYS))
-                factoryProperties.put((String)key, properties.getProperty((String)key));
+                factoryProperties.put((String)key, properties.get((String)key));
+        }
 
         connection = factory.newConnection();
 

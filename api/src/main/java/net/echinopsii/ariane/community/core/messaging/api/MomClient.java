@@ -19,6 +19,7 @@
 
 package net.echinopsii.ariane.community.core.messaging.api;
 
+import java.util.Dictionary;
 import java.util.Properties;
 
 public interface MomClient {
@@ -43,6 +44,7 @@ public interface MomClient {
     public String getClientID();
 
     public void   init(Properties properties) throws Exception;
+    public void   init(Dictionary properties) throws Exception;
     public void   close() throws Exception;
 
     public Object getConnection();
