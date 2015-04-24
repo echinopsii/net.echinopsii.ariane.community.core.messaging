@@ -61,7 +61,11 @@ public class Client implements MomClient {
 
     @Override
     public void init(Dictionary properties) throws Exception {
-        system = MessagingAkkaSystemActivator.getSystem();
+        if (MessagingAkkaSystemActivator.getSystem() ==null)
+            system = ActorSystem.create("MySystem");
+        else
+            system = MessagingAkkaSystemActivator.getSystem();
+
         factory = new ConnectionFactory();
         factory.setHost((String) properties.get(MOM_HOST));
         factory.setPort(new Integer((String)properties.get(MOM_PORT)));
