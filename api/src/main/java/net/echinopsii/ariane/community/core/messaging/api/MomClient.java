@@ -30,6 +30,7 @@ public interface MomClient {
     public final static String MOM_PSWD = "mom_host.password";
 
     // RABBITMQ SPECIFIC PROPERTIES KEYS
+    public static final String RBQ_VHOST           = "mom_host.rbq_vhost";
     public static final String RBQ_PRODUCT_KEY     = "mom_cli.rabbitmq.product";
     public static final String RBQ_INFORMATION_KEY = "mom_cli.rabbitmq.information";
     public static final String RBQ_PLATFORM_KEY    = "mom_cli.rabbitmq.platform";

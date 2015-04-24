@@ -27,11 +27,15 @@ import net.echinopsii.ariane.community.core.messaging.api.MomClient;
 import net.echinopsii.ariane.community.core.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.core.messaging.api.MomService;
 import net.echinopsii.ariane.community.core.messaging.api.MomServiceFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
 
 public class Client implements MomClient {
+
+    private static final Logger log = LoggerFactory.getLogger(Client.class);
 
     public static final String RBQ_PRODUCT_KEY     = "product";
     public static final String RBQ_INFORMATION_KEY = "information";
@@ -42,22 +46,27 @@ public class Client implements MomClient {
     private MomServiceFactory serviceFactory ;
     private List<MomRequestExecutor> requestExecutors = new ArrayList<MomRequestExecutor>();
 
-    private ActorSystem       system     = ActorSystem.create("MySystem");
+    private ActorSystem       system     = null;
     private String            clientID   = null;
     private ConnectionFactory factory    = null;
     private Connection        connection = null;
 
     @Override
     public void init(Properties properties) throws Exception {
-        Dictionary props = new Properties(properties);
+        Dictionary props = new Properties();
+        for(Object key : properties.keySet())
+            props.put(key, properties.get(key));
         init(props);
     }
 
     @Override
     public void init(Dictionary properties) throws Exception {
+        system = MessagingAkkaSystemActivator.getSystem();
         factory = new ConnectionFactory();
         factory.setHost((String) properties.get(MOM_HOST));
         factory.setPort(new Integer((String)properties.get(MOM_PORT)));
+        if (properties.get(RBQ_VHOST)!=null)
+            factory.setVirtualHost((String)properties.get(RBQ_VHOST));
         if (properties.get(MOM_USER)!=null)
             factory.setUsername((String)properties.get(MOM_USER));
         if (properties.get(MOM_PSWD)!=null)
@@ -81,8 +90,9 @@ public class Client implements MomClient {
         if (properties.get(MomClient.RBQ_VERSION_KEY)!=null)
             factoryProperties.put(RBQ_VERSION_KEY, properties.get(MomClient.RBQ_VERSION_KEY));
 
-        while(properties.keys().hasMoreElements()) {
-            Object key = properties.keys().hasMoreElements();
+        Enumeration keys = properties.keys();
+        while(keys.hasMoreElements()) {
+            Object key = keys.nextElement();
             if (key instanceof String && ((String)key).startsWith(MomClient.ARIANE_KEYS))
                 factoryProperties.put((String)key, properties.get((String)key));
         }
