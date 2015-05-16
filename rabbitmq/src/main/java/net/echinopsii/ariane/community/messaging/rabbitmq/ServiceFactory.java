@@ -23,10 +23,10 @@ import akka.actor.ActorRef;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.QueueingConsumer;
-import net.echinopsii.ariane.community.core.messaging.api.AppMsgFeeder;
-import net.echinopsii.ariane.community.core.messaging.api.AppMsgWorker;
-import net.echinopsii.ariane.community.core.messaging.api.MomConsumer;
-import net.echinopsii.ariane.community.core.messaging.api.MomServiceFactory;
+import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder;
+import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.api.MomConsumer;
+import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;

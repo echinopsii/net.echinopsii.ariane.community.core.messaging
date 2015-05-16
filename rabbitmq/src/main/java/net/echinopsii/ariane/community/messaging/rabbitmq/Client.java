@@ -23,10 +23,10 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-import net.echinopsii.ariane.community.core.messaging.api.MomClient;
-import net.echinopsii.ariane.community.core.messaging.api.MomRequestExecutor;
-import net.echinopsii.ariane.community.core.messaging.api.MomService;
-import net.echinopsii.ariane.community.core.messaging.api.MomServiceFactory;
+import net.echinopsii.ariane.community.messaging.api.MomClient;
+import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
+import net.echinopsii.ariane.community.messaging.api.MomService;
+import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,4 +1,4 @@
 [
-    "net/echinopsii/ariane/community/core/messaging/net.echinopsii.ariane.community.core.messaging.api/0.1.0-SNAPSHOT/net.echinopsii.ariane.community.core.messaging.api-0.1.0-SNAPSHOT.jar",
-    "net/echinopsii/ariane/community/core/messaging/net.echinopsii.ariane.community.core.messaging.rabbitmq/0.1.0-SNAPSHOT/net.echinopsii.ariane.community.core.messaging.rabbitmq-0.1.0-SNAPSHOT.jar"
+    "net/echinopsii/ariane/community/core/messaging/net.echinopsii.ariane.community.messaging.api/0.1.0-SNAPSHOT/net.echinopsii.ariane.community.messaging.api-0.1.0-SNAPSHOT.jar",
+    "net/echinopsii/ariane/community/core/messaging/net.echinopsii.ariane.community.messaging.rabbitmq/0.1.0-SNAPSHOT/net.echinopsii.ariane.community.messaging.rabbitmq-0.1.0-SNAPSHOT.jar"
 ]

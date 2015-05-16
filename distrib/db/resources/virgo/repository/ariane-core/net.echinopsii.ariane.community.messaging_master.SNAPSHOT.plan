@@ -4,6 +4,6 @@
 				xsi:schemaLocation="
 				        http://www.eclipse.org/virgo/schema/plan 
 				        http://www.eclipse.org/virgo/schema/plan/eclipse-virgo-plan.xsd">
-    <artifact type="bundle" name="net.echinopsii.ariane.community.core.messaging.api" version="[0.1.0,0.2.0)"/>
-    <artifact type="bundle" name="net.echinopsii.ariane.community.core.messaging.rabbitmq" version="[0.1.0,0.2.0)"/>
+    <artifact type="bundle" name="net.echinopsii.ariane.community.messaging.api" version="[0.1.0,0.2.0)"/>
+    <artifact type="bundle" name="net.echinopsii.ariane.community.messaging.rabbitmq" version="[0.1.0,0.2.0)"/>
 </plan>

@@ -19,8 +19,8 @@
 
 package net.echinopsii.ariane.community.scenarios.commons.momcli.rabbitmq;
 
-import net.echinopsii.ariane.community.core.messaging.api.MomClient;
-import net.echinopsii.ariane.community.core.messaging.api.MomClientFactory;
+import net.echinopsii.ariane.community.messaging.api.MomClient;
+import net.echinopsii.ariane.community.messaging.api.MomClientFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -44,7 +44,7 @@ public class ClientTest {
         props.put("ariane.otm", "FrontOffice OPS Team");
         props.put("ariane.dtm", "FrontOffice DEV Team");
 
-        client = MomClientFactory.make("net.echinopsii.ariane.community.core.messaging.rabbitmq.Client");
+        client = MomClientFactory.make("net.echinopsii.ariane.community.messaging.rabbitmq.Client");
 
         try {
             client.init(props);

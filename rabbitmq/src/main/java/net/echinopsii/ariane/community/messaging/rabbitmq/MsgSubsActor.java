@@ -23,7 +23,7 @@ import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.japi.Creator;
 import com.rabbitmq.client.*;
-import net.echinopsii.ariane.community.core.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 
 import java.util.Map;
 

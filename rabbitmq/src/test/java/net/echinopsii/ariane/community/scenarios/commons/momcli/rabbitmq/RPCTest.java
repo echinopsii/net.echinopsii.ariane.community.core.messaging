@@ -19,10 +19,10 @@
 
 package net.echinopsii.ariane.community.scenarios.commons.momcli.rabbitmq;
 
-import net.echinopsii.ariane.community.core.messaging.api.AppMsgWorker;
-import net.echinopsii.ariane.community.core.messaging.api.MomClient;
-import net.echinopsii.ariane.community.core.messaging.api.MomClientFactory;
-import net.echinopsii.ariane.community.core.messaging.api.MomMsgTranslator;
+import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.api.MomClient;
+import net.echinopsii.ariane.community.messaging.api.MomClientFactory;
+import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -43,7 +43,7 @@ public class RPCTest {
         props.put(MomClient.MOM_HOST, "localhost");
         props.put(MomClient.MOM_PORT, 5672);
 
-        client = MomClientFactory.make("net.echinopsii.ariane.community.core.messaging.rabbitmq.Client");
+        client = MomClientFactory.make("net.echinopsii.ariane.community.messaging.rabbitmq.Client");
 
         try {
             client.init(props);

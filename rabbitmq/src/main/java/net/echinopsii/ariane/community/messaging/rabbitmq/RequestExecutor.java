@@ -21,9 +21,9 @@ package net.echinopsii.ariane.community.messaging.rabbitmq;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.QueueingConsumer;
-import net.echinopsii.ariane.community.core.messaging.api.AppMsgWorker;
-import net.echinopsii.ariane.community.core.messaging.api.MomMsgTranslator;
-import net.echinopsii.ariane.community.core.messaging.api.MomRequestExecutor;
+import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
+import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 
 import java.io.IOException;
 import java.util.HashMap;
