@@ -1,7 +1,7 @@
 /**
  * [DEFINE YOUR PROJECT NAME/MODULE HERE]
  * [DEFINE YOUR PROJECT DESCRIPTION HERE] 
- * Copyright (C) 8/25/14 echinopsii
+ * Copyright (C) 8/24/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,10 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.core.messaging.api;
+package net.echinopsii.ariane.community.messaging.api;
 
-public interface MomConsumer extends Runnable {
-    public boolean isRunning();
-    public void    start();
-    public void    stop();
+import java.util.Map;
+
+public interface AppMsgFeeder {
+
+    public final static String MSG_FEED_NOW = "FEED_NOW";
+
+    public Map<String, Object> apply();
+    public int getInterval();
 }

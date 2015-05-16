@@ -1,6 +1,5 @@
 /**
- * [DEFINE YOUR PROJECT NAME/MODULE HERE]
- * [DEFINE YOUR PROJECT DESCRIPTION HERE] 
+ * AppMsgWorker - work on a message
  * Copyright (C) 8/24/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,14 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.core.messaging.api;
+package net.echinopsii.ariane.community.messaging.api;
 
 import java.util.Map;
 
-public interface AppMsgFeeder {
-
-    public final static String MSG_FEED_NOW = "FEED_NOW";
-
-    public Map<String, Object> apply();
-    public int getInterval();
+public interface AppMsgWorker {
+    /**
+     * apply business treatment to the message
+     * @param message to be applied
+     * @return answer msg
+     */
+    public Map<String, Object> apply(Map<String, Object> message);
 }

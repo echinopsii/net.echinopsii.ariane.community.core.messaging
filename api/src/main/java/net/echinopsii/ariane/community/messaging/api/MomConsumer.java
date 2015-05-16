@@ -1,6 +1,7 @@
 /**
- * AppMsgWorker - work on a message
- * Copyright (C) 8/24/14 echinopsii
+ * [DEFINE YOUR PROJECT NAME/MODULE HERE]
+ * [DEFINE YOUR PROJECT DESCRIPTION HERE] 
+ * Copyright (C) 8/25/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -16,15 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.core.messaging.api;
+package net.echinopsii.ariane.community.messaging.api;
 
-import java.util.Map;
-
-public interface AppMsgWorker {
-    /**
-     * apply business treatment to the message
-     * @param message to be applied
-     * @return answer msg
-     */
-    public Map<String, Object> apply(Map<String, Object> message);
+public interface MomConsumer extends Runnable {
+    public boolean isRunning();
+    public void    start();
+    public void    stop();
 }

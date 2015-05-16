@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.core.messaging.rabbitmq;
+package net.echinopsii.ariane.community.messaging.rabbitmq;
 
 import akka.actor.Props;
 import akka.actor.UntypedActor;
@@ -27,27 +27,23 @@ import net.echinopsii.ariane.community.core.messaging.api.AppMsgWorker;
 
 import java.util.Map;
 
-public class MsgRequestActor extends UntypedActor {
+public class MsgSubsActor extends UntypedActor {
 
     private MsgTranslator translator = new MsgTranslator();
     private AppMsgWorker msgWorker   = null;
-    private Client       client      = null;
-    private Channel      channel     = null;
 
-    public static Props props(final Client mclient, final Channel channel, final AppMsgWorker worker) {
-        return Props.create(new Creator<MsgRequestActor>() {
+    public static Props props(final AppMsgWorker worker) {
+        return Props.create(new Creator<MsgSubsActor>() {
             private static final long serialVersionUID = 1L;
 
             @Override
-            public MsgRequestActor create() throws Exception {
-                return new MsgRequestActor(mclient, channel, worker);
+            public MsgSubsActor create() throws Exception {
+                return new MsgSubsActor(worker);
             }
         });
     }
 
-    public MsgRequestActor(Client mclient, Channel chan, AppMsgWorker worker) {
-        client = mclient;
-        channel = chan;
+    public MsgSubsActor(AppMsgWorker worker) {
         msgWorker = worker;
     }
 
@@ -58,19 +54,12 @@ public class MsgRequestActor extends UntypedActor {
             BasicProperties properties = ((QueueingConsumer.Delivery) message).getProperties();
             byte[] body = ((QueueingConsumer.Delivery)message).getBody();
 
-            Map<String, Object> finalMessage = translator.decode(new Message().setEnvelope(envelope).
-                                                                 setProperties(properties).
-                                                                 setBody(body));
+            Map<String, Object> finalMessage = translator.decode(
+                                                   new Message().setEnvelope(((QueueingConsumer.Delivery) message).getEnvelope()).
+                                                                 setProperties(((QueueingConsumer.Delivery) message).getProperties()).
+                                                                 setBody(((QueueingConsumer.Delivery) message).getBody()));
 
-            Map<String, Object> reply = msgWorker.apply(finalMessage);
-            if (properties.getReplyTo()!=null && properties.getCorrelationId()!=null && reply!=null) {
-                reply.put(MsgTranslator.MSG_CORRELATION_ID, properties.getCorrelationId());
-                reply.put(MsgTranslator.MSG_APPLICATION_ID, client.getClientID());
-                Message replyMessage = translator.encode(reply);
-                String replyTo = properties.getReplyTo();
-                channel.basicPublish("", replyTo, (AMQP.BasicProperties) replyMessage.getProperties(), replyMessage.getBody());
-            }
-            channel.basicAck(((QueueingConsumer.Delivery)message).getEnvelope().getDeliveryTag(), false);
+            msgWorker.apply(finalMessage);
         } else
             unhandled(message);
     }

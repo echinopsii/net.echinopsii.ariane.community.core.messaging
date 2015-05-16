@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.core.messaging.api;
+package net.echinopsii.ariane.community.messaging.api;
 
 import java.util.Map;
 
