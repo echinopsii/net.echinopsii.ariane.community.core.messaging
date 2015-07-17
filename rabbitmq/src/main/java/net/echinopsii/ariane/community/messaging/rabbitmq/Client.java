@@ -62,11 +62,11 @@ public class Client implements MomClient {
     @Override
     public void init(Dictionary properties) throws Exception {
         try {
-            if (MessagingAkkaSystemActivator.getSystem() != null)
+            if (Class.forName("akka.osgi.ActorSystemActivator")!=null && MessagingAkkaSystemActivator.getSystem() != null)
                 system = MessagingAkkaSystemActivator.getSystem();
             else
                 system = ActorSystem.create("MySystem");
-        } catch (Throwable throwable) {
+        } catch (ClassNotFoundException e) {
             system = ActorSystem.create("MySystem");
         }
 
