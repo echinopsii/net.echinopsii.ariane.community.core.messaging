@@ -66,7 +66,7 @@ public class Client implements MomClient {
                 system = MessagingAkkaSystemActivator.getSystem();
             else
                 system = ActorSystem.create("MySystem");
-        } catch (Exception E) {
+        } catch (Throwable throwable) {
             system = ActorSystem.create("MySystem");
         }
 
