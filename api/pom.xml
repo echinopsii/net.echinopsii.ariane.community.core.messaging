@@ -3,17 +3,17 @@
     <modelVersion>4.0.0</modelVersion>
     
     <parent>
-         <groupId>net.echinopsii.ariane.community</groupId>
-	     <artifactId>net.echinopsii.ariane.community.messaging</artifactId>
-         <version>0.1.1-SNAPSHOT</version>
-         <relativePath>..</relativePath>
+        <groupId>net.echinopsii.ariane.community</groupId>
+        <artifactId>net.echinopsii.ariane.community.messaging</artifactId>
+        <version>0.1.1-SNAPSHOT</version>
+        <relativePath>..</relativePath>
     </parent>
 
-    <!-- General information -->
     <groupId>net.echinopsii.ariane.community.messaging</groupId>
     <artifactId>net.echinopsii.ariane.community.messaging.api</artifactId>
     <name>Ariane Community Messaging : Pattern MoM API</name>
     <packaging>bundle</packaging>
+    
 
     <build>
         <plugins>
