@@ -1,11 +1,8 @@
 {% extends "plan_module_parent_tpl.xml" %}
-{% block name %}
-        "net.echinopsii.ariane.community.{{module.name}}"
-{% endblock %}
+{% block name %}"net.echinopsii.ariane.community.{{module.name}}"{% endblock %}
 {% block version %}"{{version}}"{% endblock -%}
-{%- block configuration -%}{%- endblock -%}
 {% block bundle %}
         {% for s in submodules -%}
         <artifact type="bundle" name="net.echinopsii.ariane.community.{{module.name}}.{{s.name}}" version="[{{vmin}},{{vmax}})"/>
-        {%- endfor %}
-{% endblock %}
+        {% endfor %}
+{% endblock -%}
