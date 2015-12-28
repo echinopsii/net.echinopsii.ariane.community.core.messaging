@@ -12,7 +12,7 @@
     {% endblock -%}
     {% block modules %}
     <modules>
-        {% for mod in modules -%}
+        {% for mod in components -%}
         <module>{{mod.name}}</module>
         {% endfor -%}
     </modules>
