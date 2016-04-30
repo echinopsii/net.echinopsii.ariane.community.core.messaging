@@ -1,6 +1,6 @@
 /**
- * [DEFINE YOUR PROJECT NAME/MODULE HERE]
- * [DEFINE YOUR PROJECT DESCRIPTION HERE] 
+ * Messaging - RabbitMQ Implementation
+ * Message Feeder Actor
  * Copyright (C) 28/08/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify

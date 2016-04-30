@@ -1,6 +1,6 @@
 /**
- * [DEFINE YOUR PROJECT NAME/MODULE HERE]
- * [DEFINE YOUR PROJECT DESCRIPTION HERE] 
+ * Messaging - RabbitMQ Implementation
+ * Service implementation
  * Copyright (C) 8/27/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
