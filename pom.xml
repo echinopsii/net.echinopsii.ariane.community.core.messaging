@@ -11,8 +11,9 @@
     
     <modules>
         <module>api</module>
+        <module>nats</module>
         <module>rabbitmq</module>
-        </modules>
+    </modules>
     
     <repositories>
         <repository>
