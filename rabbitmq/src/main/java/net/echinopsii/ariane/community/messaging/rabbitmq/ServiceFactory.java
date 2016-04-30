@@ -154,7 +154,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             subsActor = ((Client)super.getMomClient()).getActorSystem().actorOf(
                     MsgSubsActor.props(feedCB), baseSource + "." + ((selector.equals("#")) ? "all" : selector) + "_msgWorker"
             );
-            final ActorRef runnableReqActor = subsActor;
+            final ActorRef runnableSubsActor = subsActor;
             final String   select           = selector;
             final Client cli = ((Client)super.getMomClient());
 
@@ -180,7 +180,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                         while (isRunning) {
                             try {
                                 QueueingConsumer.Delivery delivery = consumer.nextDelivery();
-                                runnableReqActor.tell(delivery, null);
+                                runnableSubsActor.tell(delivery, null);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }

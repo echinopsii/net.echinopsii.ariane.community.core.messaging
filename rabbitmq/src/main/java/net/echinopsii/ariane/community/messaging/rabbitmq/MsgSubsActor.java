@@ -20,17 +20,14 @@
 package net.echinopsii.ariane.community.messaging.rabbitmq;
 
 import akka.actor.Props;
-import akka.actor.UntypedActor;
 import akka.japi.Creator;
 import com.rabbitmq.client.*;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsSubsActor;
 
 import java.util.Map;
 
-public class MsgSubsActor extends UntypedActor {
-
-    private MsgTranslator translator = new MsgTranslator();
-    private AppMsgWorker msgWorker   = null;
+public class MsgSubsActor extends MsgAkkaAbsSubsActor {
 
     public static Props props(final AppMsgWorker worker) {
         return Props.create(new Creator<MsgSubsActor>() {
@@ -44,7 +41,7 @@ public class MsgSubsActor extends UntypedActor {
     }
 
     public MsgSubsActor(AppMsgWorker worker) {
-        msgWorker = worker;
+        super(worker, new MsgTranslator());
     }
 
     @Override
@@ -54,12 +51,12 @@ public class MsgSubsActor extends UntypedActor {
             BasicProperties properties = ((QueueingConsumer.Delivery) message).getProperties();
             byte[] body = ((QueueingConsumer.Delivery)message).getBody();
 
-            Map<String, Object> finalMessage = translator.decode(
+            Map<String, Object> finalMessage = ((MsgTranslator)super.getTranslator()).decode(
                                                    new Message().setEnvelope(((QueueingConsumer.Delivery) message).getEnvelope()).
                                                                  setProperties(((QueueingConsumer.Delivery) message).getProperties()).
                                                                  setBody(((QueueingConsumer.Delivery) message).getBody()));
 
-            msgWorker.apply(finalMessage);
+            super.getMsgWorker().apply(finalMessage);
         } else
             unhandled(message);
     }

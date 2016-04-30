@@ -30,7 +30,6 @@ import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsServiceFactory
 import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
 
 import java.io.IOException;
-import java.util.List;
 
 public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
 
@@ -124,6 +123,70 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
 
     @Override
     public MomAkkaService subscriberService(String source, String selector, AppMsgWorker feedCB) {
-        return null;
+        MomAkkaService ret       = null;
+        ActorRef    subsActor = null;
+        MomConsumer consumer  = null;
+        final Connection connection = ((Client)super.getMomClient()).getConnection();
+
+        if (connection != null && !connection.isClosed()) {
+            final String subject = source + ((selector !=null && !selector.equals("")) ? "." + selector : "");
+            subsActor = ((Client)super.getMomClient()).getActorSystem().actorOf(
+                    MsgSubsActor.props(feedCB), subject + "_msgWorker"
+            );
+            final ActorRef runnableSubsActor = subsActor;
+            final String select = selector;
+            final Client cli = ((Client)super.getMomClient());
+
+            consumer = new MomConsumer() {
+                private boolean isRunning = false;
+
+                @Override
+                public void run() {
+                    SyncSubscription subs = null;
+                    try {
+                        subs = connection.subscribeSync(subject);
+                        isRunning = true;
+
+                        while (isRunning) {
+                            Message msg = subs.nextMessage();
+                            runnableSubsActor.tell(msg, null);
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } finally {
+                        if (subs!=null) {
+                            try {
+                                subs.unsubscribe();
+                                subs.close();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public boolean isRunning() {
+                    return isRunning;
+                }
+
+                @Override
+                public void start() {
+                    new Thread(this).start();
+                }
+
+                @Override
+                public void stop() {
+                    isRunning = false;
+                }
+            };
+
+            consumer.start();
+            ret = new MomAkkaService().setMsgWorker(subsActor).setConsumer(consumer).setClient(
+                    ((Client)super.getMomClient())
+            );
+            super.getServices().add(ret);
+        }
+        return ret;
     }
 }

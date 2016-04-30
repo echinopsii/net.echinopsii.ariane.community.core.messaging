@@ -18,11 +18,37 @@
  */
 package net.echinopsii.ariane.community.messaging.nats;
 
-import akka.actor.UntypedActor;
+import akka.actor.Props;
+import akka.japi.Creator;
+import io.nats.client.Message;
+import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsSubsActor;
 
-public class MsgSubsActor extends UntypedActor {
+import java.util.Map;
+
+public class MsgSubsActor extends MsgAkkaAbsSubsActor {
+
+    public static Props props(final AppMsgWorker worker) {
+        return Props.create(new Creator<MsgSubsActor>() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public MsgSubsActor create() throws Exception {
+                return new MsgSubsActor(worker);
+            }
+        });
+    }
+
+    public MsgSubsActor(AppMsgWorker worker) {
+        super(worker, new MsgTranslator());
+    }
+
     @Override
     public void onReceive(Object message) throws Exception {
-
+        if (message instanceof Message) {
+            Map<String, Object> finalMessage = ((MsgTranslator) super.getTranslator()).decode((Message) message);
+            super.getMsgWorker().apply(finalMessage);
+        } else
+            unhandled(message);
     }
 }
