@@ -26,7 +26,6 @@ import com.rabbitmq.client.ConnectionFactory;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.messaging.api.MomService;
-import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,11 +43,6 @@ public class Client extends MomAkkaAbsClient implements MomClient {
     public static final String RBQ_COPYRIGHT_KEY   = "copyright";
     public static final String RBQ_VERSION_KEY     = "version";
 
-    private MomServiceFactory serviceFactory ;
-    private List<MomRequestExecutor> requestExecutors = new ArrayList<MomRequestExecutor>();
-
-    private String            clientID   = null;
-    private ConnectionFactory factory    = null;
     private Connection        connection = null;
 
     @Override
@@ -62,24 +56,24 @@ public class Client extends MomAkkaAbsClient implements MomClient {
             super.setActorSystem(ActorSystem.create("MySystem"));
         }
 
-        factory = new ConnectionFactory();
+        ConnectionFactory factory = new ConnectionFactory();
         factory.setHost((String) properties.get(MOM_HOST));
-        factory.setPort(new Integer((String)properties.get(MOM_PORT)));
+        factory.setPort(new Integer((String) properties.get(MOM_PORT)));
         if (properties.get(RBQ_VHOST)!=null)
-            factory.setVirtualHost((String)properties.get(RBQ_VHOST));
+            factory.setVirtualHost((String) properties.get(RBQ_VHOST));
         if (properties.get(MOM_USER)!=null)
-            factory.setUsername((String)properties.get(MOM_USER));
+            factory.setUsername((String) properties.get(MOM_USER));
         if (properties.get(MOM_PSWD)!=null)
-            factory.setPassword((String)properties.get(MOM_PSWD));
+            factory.setPassword((String) properties.get(MOM_PSWD));
 
         Map<String, Object> factoryProperties = factory.getClientProperties();
         if (properties.get(MomClient.RBQ_PRODUCT_KEY)!=null)
             factoryProperties.put(RBQ_PRODUCT_KEY,properties.get(MomClient.RBQ_PRODUCT_KEY));
         if (properties.get(MomClient.RBQ_INFORMATION_KEY)!=null) {
-            clientID = (String)properties.get(MomClient.RBQ_INFORMATION_KEY);
-            factoryProperties.put(RBQ_INFORMATION_KEY, clientID);
+            super.setClientID((String) properties.get(MomClient.RBQ_INFORMATION_KEY));
+            factoryProperties.put(RBQ_INFORMATION_KEY, super.getClientID());
         } else {
-            clientID = (String)properties.get(RBQ_INFORMATION_KEY);
+            super.setClientID((String)properties.get(RBQ_INFORMATION_KEY));
         }
         if (properties.get(MomClient.RBQ_PLATFORM_KEY)!=null)
             factoryProperties.put(RBQ_PLATFORM_KEY,properties.get(MomClient.RBQ_PLATFORM_KEY));
@@ -99,15 +93,15 @@ public class Client extends MomAkkaAbsClient implements MomClient {
 
         connection = factory.newConnection();
 
-        serviceFactory = new ServiceFactory(this);
+        super.setServiceFactory(new ServiceFactory(this));
     }
 
     @Override
     public void close() throws IOException {
-        for (MomRequestExecutor rexec : requestExecutors)
+        for (MomRequestExecutor rexec : super.getRequestExecutors())
             ((RequestExecutor)rexec).stop();
-        if (serviceFactory!=null)
-            for (MomService<ActorRef> service : ((ServiceFactory)serviceFactory).getServices())
+        if (super.getServiceFactory()!=null)
+            for (MomService<ActorRef> service : ((ServiceFactory)super.getServiceFactory()).getServices())
                 service.stop();
         if (connection.isOpen())
             connection.close();
@@ -128,20 +122,10 @@ public class Client extends MomAkkaAbsClient implements MomClient {
         MomRequestExecutor ret = null;
         try {
             ret = new RequestExecutor(this);
-            requestExecutors.add(ret);
+            super.getRequestExecutors().add(ret);
         } catch (IOException e) {
             e.printStackTrace();
         }
         return ret;
-    }
-
-    @Override
-    public MomServiceFactory getServiceFactory() {
-        return serviceFactory;
-    }
-
-    @Override
-    public String getClientID() {
-        return clientID;
     }
 }

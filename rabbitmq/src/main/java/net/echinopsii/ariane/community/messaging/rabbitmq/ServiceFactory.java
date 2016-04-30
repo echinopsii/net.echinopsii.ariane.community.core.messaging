@@ -1,5 +1,5 @@
 /**
- * Messaging - NATS Implementation
+ * Messaging - RabbitMQ Implementation
  * Service implementation
  * Copyright (C) 8/24/14 echinopsii
  *
@@ -24,20 +24,15 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.QueueingConsumer;
 import net.echinopsii.ariane.community.messaging.api.*;
-import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsClient;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsServiceFactory;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
-public class ServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
-
-    private Client        momClient ;
-    private List<MomAkkaService> serviceList  = new ArrayList<MomAkkaService>();
+public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
 
     public ServiceFactory(Client client) {
-        momClient = client;
+        super(client);
     }
 
     /**
@@ -51,7 +46,7 @@ public class ServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgW
      */
     @Override
     public MomAkkaService requestService(final String source, final AppMsgWorker requestCB) {
-        final Connection  connection   = momClient.getConnection();
+        final Connection  connection   = ((Client)super.getMomClient()).getConnection();
         MomAkkaService ret          = null;
         ActorRef    requestActor = null;
         MomConsumer consumer     = null;
@@ -65,7 +60,9 @@ public class ServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgW
                 e.printStackTrace();
             }
 
-            requestActor = momClient.getActorSystem().actorOf(MsgRequestActor.props(momClient, channel, requestCB), source + "_msgWorker");
+            requestActor = ((Client)super.getMomClient()).getActorSystem().actorOf(
+                    MsgRequestActor.props(((Client)super.getMomClient()), channel, requestCB), source + "_msgWorker"
+            );
             final ActorRef runnableReqActor   = requestActor;
             final Channel  runnableChannel    = channel;
 
@@ -119,8 +116,10 @@ public class ServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgW
             };
             consumer.start();
 
-            ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient(momClient);
-            serviceList.add(ret);
+            ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient(
+                    ((Client) super.getMomClient())
+            );
+            super.getServices().add(ret);
         }
 
         return ret;
@@ -130,11 +129,13 @@ public class ServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgW
     public MomAkkaService feederService(String baseDestination, String selector, int interval, AppMsgFeeder feederCB) {
         MomAkkaService ret = null;
         ActorRef feederActor = null;
-        Connection  connection   = momClient.getConnection();
+        Connection  connection   = ((Client)super.getMomClient()).getConnection();
         if (connection != null && connection.isOpen()) {
-            ActorRef feeder = momClient.getActorSystem().actorOf(MsgFeederActor.props(momClient,baseDestination, selector, feederCB));
-            ret = new MomAkkaService().setClient(momClient).setMsgFeeder(feeder, interval);
-            serviceList.add(ret);
+            ActorRef feeder = ((Client)super.getMomClient()).getActorSystem().actorOf(MsgFeederActor.props(
+                    ((Client)super.getMomClient()),baseDestination, selector, feederCB)
+            );
+            ret = new MomAkkaService().setClient(((Client) super.getMomClient())).setMsgFeeder(feeder, interval);
+            super.getServices().add(ret);
         }
         return ret;
     }
@@ -144,15 +145,18 @@ public class ServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgW
         MomAkkaService ret       = null;
         ActorRef    subsActor = null;
         MomConsumer consumer  = null;
-        final Connection connection = momClient.getConnection();
+        final Connection connection = ((Client)super.getMomClient()).getConnection();
 
         if (selector == null || selector.equals(""))
             selector = "#";
 
         if (connection != null && connection.isOpen()) {
-            subsActor = momClient.getActorSystem().actorOf(MsgSubsActor.props(feedCB), baseSource + "." + ((selector.equals("#")) ? "all" : selector) + "_msgWorker");
+            subsActor = ((Client)super.getMomClient()).getActorSystem().actorOf(
+                    MsgSubsActor.props(feedCB), baseSource + "." + ((selector.equals("#")) ? "all" : selector) + "_msgWorker"
+            );
             final ActorRef runnableReqActor = subsActor;
             final String   select           = selector;
+            final Client cli = ((Client)super.getMomClient());
 
             consumer = new MomConsumer() {
                 private boolean isRunning = false;
@@ -164,7 +168,7 @@ public class ServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgW
                         channel = connection.createChannel();
                         channel.exchangeDeclare(baseSource, "topic");
 
-                        String queueName = momClient.getClientID()+"_SUBS_2_"+baseSource+"."+select;
+                        String queueName = cli.getClientID()+"_SUBS_2_"+baseSource+"."+select;
                         channel.queueDeclare(queueName, false, true, false, null);
                         channel.queueBind(queueName, baseSource, select);
 
@@ -213,14 +217,11 @@ public class ServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgW
             };
 
             consumer.start();
-            ret = new MomAkkaService().setMsgWorker(subsActor).setConsumer(consumer).setClient(momClient);
-            serviceList.add(ret);
+            ret = new MomAkkaService().setMsgWorker(subsActor).setConsumer(consumer).setClient(
+                    ((Client)super.getMomClient())
+            );
+            super.getServices().add(ret);
         }
         return ret;
-    }
-
-    @Override
-    public List<MomAkkaService> getServices() {
-        return serviceList;
     }
 }

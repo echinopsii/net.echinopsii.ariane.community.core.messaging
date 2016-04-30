@@ -1,7 +1,7 @@
 /**
- * Messaging - NATS Implementation
+ * Messaging - RabbitMQ Implementation
  * Request Executor implementation
- * Copyright (C) 4/30/16 echinopsii
+ * Copyright (C) 8/25/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,33 +17,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.messaging.nats;
+package net.echinopsii.ariane.community.messaging.common;
 
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
-import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecutor;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
-public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
+public abstract class MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
 
-    public RequestExecutor(Client client) throws IOException {
-        super(client);
+    private MomClient momClient;
+    private Map<String, Object> consumers = new HashMap<String, Object>();
+
+    public MomAkkaAbsRequestExecutor(MomClient client) throws IOException {
+        momClient = client;
     }
 
-    @Override
-    public Map<String, Object> fireAndForget(Map<String, Object> request, String destination) {
-        return null;
+    public void stop() throws IOException {
+        consumers.clear();
     }
 
-    @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, AppMsgWorker answerCB) {
-        return null;
+    public MomClient getMomClient() {
+        return momClient;
     }
 
-    @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) {
-        return null;
+    public Map<String, Object> getConsumers() {
+        return consumers;
     }
 }

@@ -18,56 +18,80 @@
  */
 package net.echinopsii.ariane.community.messaging.nats;
 
+import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+import io.nats.client.Connection;
+import io.nats.client.ConnectionFactory;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
-import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
+import net.echinopsii.ariane.community.messaging.api.MomService;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Dictionary;
-import java.util.Properties;
 
-public class Client implements MomClient {
+public class Client extends MomAkkaAbsClient implements MomClient {
 
     private static final Logger log = LoggerFactory.getLogger(Client.class);
 
-    @Override
-    public String getClientID() {
-        return null;
-    }
-
-    @Override
-    public void init(Properties properties) throws Exception {
-
-    }
+    private Connection connection = null;
 
     @Override
     public void init(Dictionary properties) throws Exception {
+        try {
+            if (Class.forName("akka.osgi.ActorSystemActivator")!=null && MessagingAkkaSystemActivator.getSystem() != null)
+                super.setActorSystem(MessagingAkkaSystemActivator.getSystem());
+            else
+                super.setActorSystem(ActorSystem.create("MySystem"));
+        } catch (ClassNotFoundException e) {
+            super.setActorSystem(ActorSystem.create("MySystem"));
+        }
 
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setHost((String) properties.get(MOM_HOST));
+        factory.setPort(new Integer((String) properties.get(MOM_PORT)));
+        if (properties.get(MOM_USER)!=null)
+            factory.setUsername((String) properties.get(MOM_USER));
+        if (properties.get(MOM_PSWD)!=null)
+            factory.setPassword((String) properties.get(MOM_PSWD));
+
+        connection = factory.createConnection();
+
+        super.setServiceFactory(new ServiceFactory(this));
     }
 
     @Override
     public void close() throws Exception {
-
+        for (MomRequestExecutor rexec : super.getRequestExecutors())
+            ((RequestExecutor)rexec).stop();
+        if (super.getServiceFactory()!=null)
+            for (MomService<ActorRef> service : ((ServiceFactory)super.getServiceFactory()).getServices())
+                service.stop();
+        if (!connection.isClosed())
+            connection.close();
     }
 
     @Override
     public Object getConnection() {
-        return null;
+        return connection;
     }
 
     @Override
     public boolean isConnected() {
-        return false;
+        return !connection.isClosed();
     }
 
     @Override
     public MomRequestExecutor createRequestExecutor() {
-        return null;
-    }
-
-    @Override
-    public MomServiceFactory getServiceFactory() {
-        return null;
+        MomRequestExecutor ret = null;
+        try {
+            ret = new RequestExecutor(this);
+            super.getRequestExecutors().add(ret);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return ret;
     }
 }

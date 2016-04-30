@@ -1,7 +1,7 @@
 /**
- * Messaging - RabbitMQ Implementation
+ * Messaging - Common Implementation
  * Client implementation
- * Copyright (C) 8/24/14 echinopsii
+ * Copyright (C) 4/30/16 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,12 +21,18 @@ package net.echinopsii.ariane.community.messaging.common;
 
 import akka.actor.ActorSystem;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
+import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
+import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
 
 import java.util.*;
 
 public abstract class MomAkkaAbsClient implements MomClient {
 
     private ActorSystem       system     = null;
+    private String            clientID   = null;
+
+    private MomServiceFactory serviceFactory ;
+    private List<MomRequestExecutor> requestExecutors = new ArrayList<MomRequestExecutor>();
 
     @Override
     public void init(Properties properties) throws Exception {
@@ -42,5 +48,28 @@ public abstract class MomAkkaAbsClient implements MomClient {
 
     public void setActorSystem(ActorSystem sys) {
         this.system = sys;
+    }
+
+
+    @Override
+    public String getClientID() {
+        return clientID;
+    }
+
+    public void setClientID(String id) {
+        this.clientID = id;
+    }
+
+    @Override
+    public MomServiceFactory getServiceFactory() {
+        return serviceFactory;
+    }
+
+    public void setServiceFactory(MomServiceFactory serviceFactory) {
+        this.serviceFactory = serviceFactory;
+    }
+
+    public List<MomRequestExecutor> getRequestExecutors() {
+        return requestExecutors;
     }
 }

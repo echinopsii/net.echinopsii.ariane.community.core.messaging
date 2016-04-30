@@ -21,11 +21,16 @@ package net.echinopsii.ariane.community.messaging.nats;
 import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsServiceFactory;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
 
 import java.util.List;
 
-public class ServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
+public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
+
+    public ServiceFactory(Client client) {
+        super(client);
+    }
 
     @Override
     public MomAkkaService requestService(String source, AppMsgWorker requestCB) {
