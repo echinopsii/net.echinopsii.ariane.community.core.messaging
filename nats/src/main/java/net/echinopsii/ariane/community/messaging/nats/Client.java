@@ -74,7 +74,7 @@ public class Client extends MomAkkaAbsClient implements MomClient {
     }
 
     @Override
-    public Object getConnection() {
+    public Connection getConnection() {
         return connection;
     }
 

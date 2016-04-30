@@ -19,11 +19,16 @@
 
 package net.echinopsii.ariane.community.messaging.nats;
 
+import io.nats.client.Message;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class MsgTranslator implements MomMsgTranslator<Message> {
+
+    public final static String MSG_NATS_SUBJECT = "MSG_NATS_SUBJECT";
+
     @Override
     public Map<String, Class> getMessageTypo() {
         return null;
@@ -31,11 +36,29 @@ public class MsgTranslator implements MomMsgTranslator<Message> {
 
     @Override
     public Message encode(Map<String, Object> message) {
-        return null;
+        Message ret = new Message();
+        for (String key : message.keySet()) {
+            if (key.equals(MSG_REPLY_TO)) {
+                ret.setReplyTo((String)message.get(MSG_REPLY_TO));
+            } else if (key.equals(MSG_NATS_SUBJECT)) {
+                ret.setSubject((String) message.get(MSG_NATS_SUBJECT));
+            } else if (key.equals(MSG_BODY)) {
+                Object bodyObject = message.get(MSG_BODY);
+                if (bodyObject instanceof String)
+                    ret.setData(((String) message.get(MSG_BODY)).getBytes());
+                else if (bodyObject instanceof byte[])
+                    ret.setData((byte[]) bodyObject);
+            }
+        }
+        return ret;
     }
 
     @Override
     public Map<String, Object> decode(Message message) {
-        return null;
+        LinkedHashMap<String, Object> decodedMessage = new LinkedHashMap<String, Object>();
+        decodedMessage.put(MSG_REPLY_TO, message.getReplyTo());
+        decodedMessage.put(MSG_NATS_SUBJECT, message.getSubject());
+        decodedMessage.put(MSG_BODY, message.getData());
+        return decodedMessage;
     }
 }

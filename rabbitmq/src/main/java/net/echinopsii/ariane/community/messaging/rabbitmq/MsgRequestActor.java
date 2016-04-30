@@ -24,14 +24,12 @@ import akka.actor.UntypedActor;
 import akka.japi.Creator;
 import com.rabbitmq.client.*;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsRequestActor;
 
 import java.util.Map;
 
-public class MsgRequestActor extends UntypedActor {
+public class MsgRequestActor extends MsgAkkaAbsRequestActor {
 
-    private MsgTranslator translator = new MsgTranslator();
-    private AppMsgWorker msgWorker   = null;
-    private Client       client      = null;
     private Channel      channel     = null;
 
     public static Props props(final Client mclient, final Channel channel, final AppMsgWorker worker) {
@@ -46,9 +44,8 @@ public class MsgRequestActor extends UntypedActor {
     }
 
     public MsgRequestActor(Client mclient, Channel chan, AppMsgWorker worker) {
-        client = mclient;
+        super(mclient, worker, new MsgTranslator());
         channel = chan;
-        msgWorker = worker;
     }
 
     @Override
@@ -58,15 +55,15 @@ public class MsgRequestActor extends UntypedActor {
             BasicProperties properties = ((QueueingConsumer.Delivery) message).getProperties();
             byte[] body = ((QueueingConsumer.Delivery)message).getBody();
 
-            Map<String, Object> finalMessage = translator.decode(new Message().setEnvelope(envelope).
+            Map<String, Object> finalMessage = ((MsgTranslator)super.getTranslator()).decode(new Message().setEnvelope(envelope).
                                                                  setProperties(properties).
                                                                  setBody(body));
 
-            Map<String, Object> reply = msgWorker.apply(finalMessage);
+            Map<String, Object> reply = super.getMsgWorker().apply(finalMessage);
             if (properties.getReplyTo()!=null && properties.getCorrelationId()!=null && reply!=null) {
                 reply.put(MsgTranslator.MSG_CORRELATION_ID, properties.getCorrelationId());
-                reply.put(MsgTranslator.MSG_APPLICATION_ID, client.getClientID());
-                Message replyMessage = translator.encode(reply);
+                reply.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
+                Message replyMessage = ((MsgTranslator)super.getTranslator()).encode(reply);
                 String replyTo = properties.getReplyTo();
                 channel.basicPublish("", replyTo, (AMQP.BasicProperties) replyMessage.getProperties(), replyMessage.getBody());
             }
