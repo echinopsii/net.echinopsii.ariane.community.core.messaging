@@ -17,7 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.messaging.api;
+package net.echinopsii.ariane.community.messaging.common;
+
+import net.echinopsii.ariane.community.messaging.api.MomClient;
 
 public class MomClientFactory {
 

@@ -20,7 +20,7 @@
 package net.echinopsii.ariane.community.scenarios.commons.momcli.rabbitmq;
 
 import net.echinopsii.ariane.community.messaging.api.MomClient;
-import net.echinopsii.ariane.community.messaging.api.MomClientFactory;
+import net.echinopsii.ariane.community.messaging.common.MomClientFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -39,6 +39,9 @@ public class ClientTest {
         Properties props = new Properties();
         props.put(MomClient.MOM_HOST, "localhost");
         props.put(MomClient.MOM_PORT, "5672");
+        props.put(MomClient.MOM_USER, "ariane");
+        props.put(MomClient.MOM_PSWD, "password");
+        props.put(MomClient.RBQ_VHOST, "/ariane");
         props.put("ariane.pgurl", "jmx://frontoffice-01.lab01.dev.dekatonshivr.echinopsii.net:9010");
         props.put("ariane.osi", "frontoffice-01.lab01.dev.dekatonshivr.echinopsii.net");
         props.put("ariane.otm", "FrontOffice OPS Team");
@@ -49,7 +52,6 @@ public class ClientTest {
         try {
             client.init(props);
         } catch (Exception e) {
-            e.printStackTrace();
             System.err.println("No local rabbit to test");
             client = null;
         }

@@ -21,28 +21,29 @@ package net.echinopsii.ariane.community.messaging.nats;
 import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
 
 import java.util.List;
 
-public class ServiceFactory implements MomServiceFactory<Service, AppMsgWorker, AppMsgFeeder, String> {
+public class ServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
 
     @Override
-    public Service requestService(String source, AppMsgWorker requestCB) {
+    public MomAkkaService requestService(String source, AppMsgWorker requestCB) {
         return null;
     }
 
     @Override
-    public Service feederService(String baseDestination, String selector, int interval, AppMsgFeeder feederCB) {
+    public MomAkkaService feederService(String baseDestination, String selector, int interval, AppMsgFeeder feederCB) {
         return null;
     }
 
     @Override
-    public Service subscriberService(String source, String selector, AppMsgWorker feedCB) {
+    public MomAkkaService subscriberService(String source, String selector, AppMsgWorker feedCB) {
         return null;
     }
 
     @Override
-    public List<Service> getServices() {
+    public List<MomAkkaService> getServices() {
         return null;
     }
 }

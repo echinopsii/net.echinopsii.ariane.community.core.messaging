@@ -23,19 +23,18 @@ import akka.actor.ActorRef;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.QueueingConsumer;
-import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder;
-import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
-import net.echinopsii.ariane.community.messaging.api.MomConsumer;
-import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
+import net.echinopsii.ariane.community.messaging.api.*;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsClient;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ServiceFactory implements MomServiceFactory<Service, AppMsgWorker, AppMsgFeeder, String> {
+public class ServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
 
     private Client        momClient ;
-    private List<Service> serviceList  = new ArrayList<Service>();
+    private List<MomAkkaService> serviceList  = new ArrayList<MomAkkaService>();
 
     public ServiceFactory(Client client) {
         momClient = client;
@@ -51,9 +50,9 @@ public class ServiceFactory implements MomServiceFactory<Service, AppMsgWorker, 
      *
      */
     @Override
-    public Service requestService(final String source, final AppMsgWorker requestCB) {
+    public MomAkkaService requestService(final String source, final AppMsgWorker requestCB) {
         final Connection  connection   = momClient.getConnection();
-        Service     ret          = null;
+        MomAkkaService ret          = null;
         ActorRef    requestActor = null;
         MomConsumer consumer     = null;
 
@@ -120,7 +119,7 @@ public class ServiceFactory implements MomServiceFactory<Service, AppMsgWorker, 
             };
             consumer.start();
 
-            ret = new Service().setMsgWorker(requestActor).setConsumer(consumer).setClient(momClient);
+            ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient(momClient);
             serviceList.add(ret);
         }
 
@@ -128,21 +127,21 @@ public class ServiceFactory implements MomServiceFactory<Service, AppMsgWorker, 
     }
 
     @Override
-    public Service feederService(String baseDestination, String selector, int interval, AppMsgFeeder feederCB) {
-        Service  ret = null;
+    public MomAkkaService feederService(String baseDestination, String selector, int interval, AppMsgFeeder feederCB) {
+        MomAkkaService ret = null;
         ActorRef feederActor = null;
         Connection  connection   = momClient.getConnection();
         if (connection != null && connection.isOpen()) {
             ActorRef feeder = momClient.getActorSystem().actorOf(MsgFeederActor.props(momClient,baseDestination, selector, feederCB));
-            ret = new Service().setClient(momClient).setMsgFeeder(feeder, interval);
+            ret = new MomAkkaService().setClient(momClient).setMsgFeeder(feeder, interval);
             serviceList.add(ret);
         }
         return ret;
     }
 
     @Override
-    public Service subscriberService(final String baseSource, String selector, AppMsgWorker feedCB) {
-        Service     ret       = null;
+    public MomAkkaService subscriberService(final String baseSource, String selector, AppMsgWorker feedCB) {
+        MomAkkaService ret       = null;
         ActorRef    subsActor = null;
         MomConsumer consumer  = null;
         final Connection connection = momClient.getConnection();
@@ -214,14 +213,14 @@ public class ServiceFactory implements MomServiceFactory<Service, AppMsgWorker, 
             };
 
             consumer.start();
-            ret = new Service().setMsgWorker(subsActor).setConsumer(consumer).setClient(momClient);
+            ret = new MomAkkaService().setMsgWorker(subsActor).setConsumer(consumer).setClient(momClient);
             serviceList.add(ret);
         }
         return ret;
     }
 
     @Override
-    public List<Service> getServices() {
+    public List<MomAkkaService> getServices() {
         return serviceList;
     }
 }

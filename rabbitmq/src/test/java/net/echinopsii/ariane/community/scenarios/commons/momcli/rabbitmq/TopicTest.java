@@ -20,6 +20,7 @@
 package net.echinopsii.ariane.community.scenarios.commons.momcli.rabbitmq;
 
 import net.echinopsii.ariane.community.messaging.api.*;
+import net.echinopsii.ariane.community.messaging.common.MomClientFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;

@@ -1,6 +1,6 @@
 /**
- * Messaging - RabbitMQ Implementation
- * Service implementation
+ * Messaging - Common Implementation
+ * Service Akka implementation
  * Copyright (C) 8/27/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,25 +17,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.messaging.rabbitmq;
+package net.echinopsii.ariane.community.messaging.common;
 
 import akka.actor.ActorRef;
 import akka.actor.Cancellable;
 import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder;
+import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomConsumer;
 import net.echinopsii.ariane.community.messaging.api.MomService;
 import scala.concurrent.duration.Duration;
 
 import java.util.concurrent.TimeUnit;
 
-public class Service implements MomService<ActorRef>{
+public class MomAkkaService implements MomService<ActorRef>{
 
     private MomConsumer consumer;
     private ActorRef    msgWorker;
     private ActorRef    msgFeeder;
     private Cancellable cancellable;
-    private Client      client;
-
+    private MomAkkaAbsClient client;
 
     @Override
     public MomConsumer getConsumer() {
@@ -43,7 +43,7 @@ public class Service implements MomService<ActorRef>{
     }
 
     @Override
-    public Service setConsumer(MomConsumer consumer) {
+    public MomAkkaService setConsumer(MomConsumer consumer) {
         this.consumer = consumer;
         return this;
     }
@@ -54,7 +54,7 @@ public class Service implements MomService<ActorRef>{
     }
 
     @Override
-    public Service setMsgWorker(ActorRef msgWorker) {
+    public MomAkkaService setMsgWorker(ActorRef msgWorker) {
         this.msgWorker = msgWorker;
         return this;
     }
@@ -65,7 +65,7 @@ public class Service implements MomService<ActorRef>{
     }
 
     @Override
-    public Service setMsgFeeder(ActorRef msgFeeder, int schedulerInterval) {
+    public MomAkkaService setMsgFeeder(ActorRef msgFeeder, int schedulerInterval) {
         this.msgFeeder = msgFeeder;
         cancellable = client.getActorSystem().scheduler().schedule(Duration.Zero(),
                                                                    Duration.create(schedulerInterval, TimeUnit.MILLISECONDS),
@@ -79,16 +79,16 @@ public class Service implements MomService<ActorRef>{
     @Override
     public void stop() {
         if (consumer != null) consumer.stop();
-        if (cancellable != null) cancellable.cancel();
         if (msgFeeder != null) client.getActorSystem().stop(msgFeeder);
         if (msgWorker !=null) client.getActorSystem().stop(msgWorker);
+        if (cancellable != null) cancellable.cancel();
     }
 
-    public Client getClient() {
+    public MomClient getClient() {
         return client;
     }
 
-    public Service setClient(Client client) {
+    public MomAkkaService setClient(MomAkkaAbsClient client) {
         this.client = client;
         return this;
     }

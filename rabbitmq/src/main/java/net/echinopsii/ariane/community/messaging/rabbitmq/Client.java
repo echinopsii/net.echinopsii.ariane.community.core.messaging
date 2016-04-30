@@ -27,13 +27,14 @@ import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.messaging.api.MomService;
 import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
 
-public class Client implements MomClient {
+public class Client extends MomAkkaAbsClient implements MomClient {
 
     private static final Logger log = LoggerFactory.getLogger(Client.class);
 
@@ -46,28 +47,19 @@ public class Client implements MomClient {
     private MomServiceFactory serviceFactory ;
     private List<MomRequestExecutor> requestExecutors = new ArrayList<MomRequestExecutor>();
 
-    private ActorSystem       system     = null;
     private String            clientID   = null;
     private ConnectionFactory factory    = null;
     private Connection        connection = null;
 
     @Override
-    public void init(Properties properties) throws Exception {
-        Dictionary props = new Properties();
-        for(Object key : properties.keySet())
-            props.put(key, properties.get(key));
-        init(props);
-    }
-
-    @Override
     public void init(Dictionary properties) throws Exception {
         try {
             if (Class.forName("akka.osgi.ActorSystemActivator")!=null && MessagingAkkaSystemActivator.getSystem() != null)
-                system = MessagingAkkaSystemActivator.getSystem();
+                super.setActorSystem(MessagingAkkaSystemActivator.getSystem());
             else
-                system = ActorSystem.create("MySystem");
+                super.setActorSystem(ActorSystem.create("MySystem"));
         } catch (ClassNotFoundException e) {
-            system = ActorSystem.create("MySystem");
+            super.setActorSystem(ActorSystem.create("MySystem"));
         }
 
         factory = new ConnectionFactory();
@@ -151,9 +143,5 @@ public class Client implements MomClient {
     @Override
     public String getClientID() {
         return clientID;
-    }
-
-    public ActorSystem getActorSystem() {
-        return system;
     }
 }
