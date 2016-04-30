@@ -20,23 +20,17 @@
 package net.echinopsii.ariane.community.messaging.rabbitmq;
 
 import akka.actor.Props;
-import akka.actor.UntypedActor;
 import akka.japi.Creator;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder;
+import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsFeederActor;
 
 import java.io.IOException;
 import java.util.Map;
 
-public class MsgFeederActor extends UntypedActor {
+public class MsgFeederActor extends MsgAkkaAbsFeederActor {
 
-    private MsgTranslator translator = new MsgTranslator();
-    private String        baseDest;
-    private String        selector;
-    private AppMsgFeeder  msgFeeder;
-
-    private Client        client ;
     private Connection    connection;
     private Channel       channel ;
 
@@ -52,14 +46,11 @@ public class MsgFeederActor extends UntypedActor {
     }
 
     public MsgFeederActor(Client mclient, String bDest, String selector_, AppMsgFeeder feeder) {
-        client     = mclient;
-        baseDest   = bDest;
-        selector   = selector_;
-        msgFeeder  = feeder;
-        connection = client.getConnection();
+        super(mclient, bDest, selector_, feeder, new MsgTranslator());
+        connection = (Connection)super.getClient().getConnection();
         try {
             channel = connection.createChannel();
-            channel.exchangeDeclare(this.baseDest, "topic");
+            channel.exchangeDeclare(super.getBaseDest(), "topic");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -68,10 +59,10 @@ public class MsgFeederActor extends UntypedActor {
     @Override
     public void onReceive(Object message) throws Exception {
         if (message instanceof String && ((String)message).equals(AppMsgFeeder.MSG_FEED_NOW)) {
-            Map<String, Object> newFeed = msgFeeder.apply();
-            newFeed.put(MsgTranslator.MSG_APPLICATION_ID, client.getClientID());
-            Message newFeedMsg = translator.encode(newFeed);
-            channel.basicPublish(baseDest, selector, (com.rabbitmq.client.AMQP.BasicProperties) newFeedMsg.getProperties(), newFeedMsg.getBody());
+            Map<String, Object> newFeed = super.getMsgFeeder().apply();
+            newFeed.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
+            Message newFeedMsg = ((MsgTranslator)super.getTranslator()).encode(newFeed);
+            channel.basicPublish(super.getBaseDest(), super.getSelector(), (com.rabbitmq.client.AMQP.BasicProperties) newFeedMsg.getProperties(), newFeedMsg.getBody());
         } else
             unhandled(message);
     }

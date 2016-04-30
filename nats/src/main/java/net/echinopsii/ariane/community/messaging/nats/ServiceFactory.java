@@ -109,16 +109,21 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
 
     @Override
     public MomAkkaService feederService(String baseDestination, String selector, int interval, AppMsgFeeder feederCB) {
-        return null;
+        MomAkkaService ret = null;
+        ActorRef feederActor = null;
+        Connection  connection   = ((Client)super.getMomClient()).getConnection();
+        if (connection != null && !connection.isClosed()) {
+            ActorRef feeder = ((Client)super.getMomClient()).getActorSystem().actorOf(MsgFeederActor.props(
+                            ((Client)super.getMomClient()),baseDestination, selector, feederCB)
+            );
+            ret = new MomAkkaService().setClient(((Client) super.getMomClient())).setMsgFeeder(feeder, interval);
+            super.getServices().add(ret);
+        }
+        return ret;
     }
 
     @Override
     public MomAkkaService subscriberService(String source, String selector, AppMsgWorker feedCB) {
-        return null;
-    }
-
-    @Override
-    public List<MomAkkaService> getServices() {
         return null;
     }
 }

@@ -1,6 +1,6 @@
 /**
  * Messaging - RabbitMQ Implementation
- * Message Request Actor
+ * Message Feeder Actor
  * Copyright (C) 28/08/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,20 +20,25 @@
 package net.echinopsii.ariane.community.messaging.common;
 
 import akka.actor.UntypedActor;
-import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 
+public abstract class MsgAkkaAbsFeederActor extends UntypedActor {
 
-public abstract class MsgAkkaAbsRequestActor extends UntypedActor {
+    private MomMsgTranslator translator;
+    private String        baseDest;
+    private String        selector;
+    private AppMsgFeeder  msgFeeder;
 
-    private MomMsgTranslator translator = null;
-    private AppMsgWorker msgWorker   = null;
-    private MomClient client      = null;
+    private MomClient client ;
 
-    public MsgAkkaAbsRequestActor(MomClient mclient, AppMsgWorker worker, MomMsgTranslator translator_) {
-        client = mclient;
-        msgWorker = worker;
+    public MsgAkkaAbsFeederActor(MomClient mclient, String bDest, String selector_,
+                                 AppMsgFeeder feeder, MomMsgTranslator translator_) {
+        client     = mclient;
+        baseDest   = bDest;
+        selector   = selector_;
+        msgFeeder  = feeder;
         translator = translator_;
     }
 
@@ -41,8 +46,16 @@ public abstract class MsgAkkaAbsRequestActor extends UntypedActor {
         return translator;
     }
 
-    public AppMsgWorker getMsgWorker() {
-        return msgWorker;
+    public String getBaseDest() {
+        return baseDest;
+    }
+
+    public String getSelector() {
+        return selector;
+    }
+
+    public AppMsgFeeder getMsgFeeder() {
+        return msgFeeder;
     }
 
     public MomClient getClient() {

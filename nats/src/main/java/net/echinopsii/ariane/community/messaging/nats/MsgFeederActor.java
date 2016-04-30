@@ -18,11 +18,49 @@
  */
 package net.echinopsii.ariane.community.messaging.nats;
 
-import akka.actor.UntypedActor;
+import akka.actor.Props;
+import akka.japi.Creator;
+import io.nats.client.Connection;
+import io.nats.client.Message;
+import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder;
+import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsFeederActor;
 
-public class MsgFeederActor extends UntypedActor {
+import java.util.Map;
+
+public class MsgFeederActor extends MsgAkkaAbsFeederActor {
+
+    private Connection connection;
+    private String subject;
+
+    public static Props props(final Client mclient, final String baseDest, final String selector, final AppMsgFeeder feeder) {
+        return Props.create(new Creator<MsgFeederActor>() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public MsgFeederActor create() throws Exception {
+                return new MsgFeederActor(mclient, baseDest, selector, feeder);
+            }
+        });
+    }
+
+    public MsgFeederActor(Client mclient, String bDest, String selector_, AppMsgFeeder feeder) {
+        super(mclient, bDest, selector_, feeder, new MsgTranslator());
+        if (selector_ != null && !selector_.equals(""))
+            subject = bDest + "." + selector_;
+        else
+            subject = bDest;
+        connection = (Connection)super.getClient().getConnection();
+    }
+
     @Override
     public void onReceive(Object message) throws Exception {
-
+        if (message instanceof String && ((String)message).equals(AppMsgFeeder.MSG_FEED_NOW)) {
+            Map<String, Object> newFeed = super.getMsgFeeder().apply();
+            newFeed.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
+            Message newFeedMsg = ((MsgTranslator)super.getTranslator()).encode(newFeed);
+            newFeedMsg.setSubject(subject);
+            connection.publish(newFeedMsg);
+        } else
+            unhandled(message);
     }
 }
