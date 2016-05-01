@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.scenarios.commons.momcli.rabbitmq;
+package net.echinopsii.community.messaging.nats;
 
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
@@ -41,14 +41,14 @@ public class RPCTest {
     public static void testSetup() throws IllegalAccessException, ClassNotFoundException, InstantiationException {
         Properties props = new Properties();
         props.put(MomClient.MOM_HOST, "localhost");
-        props.put(MomClient.MOM_PORT, 5672);
+        props.put(MomClient.MOM_PORT, 4222);
 
-        client = MomClientFactory.make("net.echinopsii.ariane.community.messaging.rabbitmq.Client");
+        client = MomClientFactory.make("net.echinopsii.ariane.community.messaging.nats.Client");
 
         try {
             client.init(props);
         } catch (Exception e) {
-            System.err.println("No local rabbit to test");
+            System.err.println("No local NATS to test");
             client = null;
         }
     }
@@ -59,7 +59,7 @@ public class RPCTest {
             client.close();
     }
 
-    final static String sendedRequestBody = "Hello Rabbit!";
+    final static String sendedRequestBody = "Hello NATS!";
     final static String sendedReplyBody   = "Hello Client!";
 
     class TestRequestWorker implements AppMsgWorker {
@@ -104,11 +104,11 @@ public class RPCTest {
             TestRequestWorker requestWorker = new TestRequestWorker();
             TestReplyWorker   replyWorker   = new TestReplyWorker();
 
-            client.getServiceFactory().requestService("RPC_QUEUE", requestWorker);
+            client.getServiceFactory().requestService("RPC_SUBJECT", requestWorker);
 
             Map<String, Object> request = new HashMap<String, Object>();
             request.put(MomMsgTranslator.MSG_BODY, sendedRequestBody);
-            client.createRequestExecutor().RPC(request, "RPC_QUEUE", replyWorker);
+            client.createRequestExecutor().RPC(request, "RPC_SUBJECT", replyWorker);
 
             assertTrue(requestWorker.isOK());
             assertTrue(replyWorker.isOK());

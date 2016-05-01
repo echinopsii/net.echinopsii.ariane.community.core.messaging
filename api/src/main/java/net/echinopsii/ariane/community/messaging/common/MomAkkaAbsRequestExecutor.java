@@ -1,7 +1,7 @@
 /**
- * Messaging - RabbitMQ Implementation
- * Request Executor implementation
- * Copyright (C) 8/25/14 echinopsii
+ * Messaging - Common Implementation
+ * Request Executor abstract implementation
+ * Copyright (C) 4/30/16 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -46,5 +46,10 @@ public abstract class MomAkkaAbsRequestExecutor implements MomRequestExecutor<St
 
     public Map<String, Object> getConsumers() {
         return consumers;
+    }
+
+    @Override
+    public Map<String, Object> RPC(Map<String, Object> request, String destination, AppMsgWorker answerCB) {
+        return RPC(request, destination, null, answerCB);
     }
 }

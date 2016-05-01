@@ -1,7 +1,7 @@
 /**
  * Messaging - Common Implementation
  * Abstract Service implementation
- * Copyright (C) 8/24/14 echinopsii
+ * Copyright (C) $/30/16 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as

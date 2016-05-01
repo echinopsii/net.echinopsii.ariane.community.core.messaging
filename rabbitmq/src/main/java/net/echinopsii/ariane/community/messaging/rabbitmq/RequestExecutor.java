@@ -62,11 +62,6 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     }
 
     @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, AppMsgWorker answerCB) {
-        return RPC(request, destination, null, answerCB);
-    }
-
-    @Override
     public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) {
         Map<String, Object> response = null;
         try {

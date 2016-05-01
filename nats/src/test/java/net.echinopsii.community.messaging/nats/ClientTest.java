@@ -1,6 +1,6 @@
 /**
- * [DEFINE YOUR PROJECT NAME/MODULE HERE]
- * [DEFINE YOUR PROJECT DESCRIPTION HERE] 
+ * Messaging NATS Impl test
+ * Client test
  * Copyright (C) 8/27/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.scenarios.commons.momcli.rabbitmq;
+package net.echinopsii.community.messaging.nats;
 
 import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.common.MomClientFactory;
@@ -38,16 +38,15 @@ public class ClientTest {
     public static void testSetup() throws IllegalAccessException, ClassNotFoundException, InstantiationException {
         Properties props = new Properties();
         props.put(MomClient.MOM_HOST, "localhost");
-        props.put(MomClient.MOM_PORT, "5672");
-        props.put(MomClient.MOM_USER, "ariane");
-        props.put(MomClient.MOM_PSWD, "password");
-        props.put(MomClient.RBQ_VHOST, "/ariane");
-        props.put("ariane.pgurl", "jmx://frontoffice-01.lab01.dev.dekatonshivr.echinopsii.net:9010");
-        props.put("ariane.osi", "frontoffice-01.lab01.dev.dekatonshivr.echinopsii.net");
-        props.put("ariane.otm", "FrontOffice OPS Team");
-        props.put("ariane.dtm", "FrontOffice DEV Team");
-
-        client = MomClientFactory.make("net.echinopsii.ariane.community.messaging.rabbitmq.Client");
+        props.put(MomClient.MOM_PORT, "4222");
+        //props.put(MomClient.MOM_USER, "ariane");
+        //props.put(MomClient.MOM_PSWD, "password");
+        props.put(MomClient.NATS_CONNECTION_NAME, "ClientTest");
+        //props.put("ariane.pgurl", "jmx://frontoffice-01.lab01.dev.dekatonshivr.echinopsii.net:9010");
+        //props.put("ariane.osi", "frontoffice-01.lab01.dev.dekatonshivr.echinopsii.net");
+        //props.put("ariane.otm", "FrontOffice OPS Team");
+        //props.put("ariane.dtm", "FrontOffice DEV Team");
+        client = MomClientFactory.make("net.echinopsii.ariane.community.messaging.nats.Client");
 
         try {
             client.init(props);

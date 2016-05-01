@@ -37,6 +37,9 @@ public interface MomClient {
     public static final String RBQ_COPYRIGHT_KEY   = "mom_cli.rabbitmq.copyright";
     public static final String RBQ_VERSION_KEY     = "mom_cli.rabbitmq.version";
 
+    // NATS SPECIFIC PROPERTIES KEYS
+    public static final String NATS_CONNECTION_NAME = "mom_cli.nats.connection_name";
+
     // ARIANE SPECIFIC PROPERTIES KEYS BEGIN WITH
     public static final String ARIANE_KEYS = "ariane";
 

@@ -1,6 +1,6 @@
 /**
  * Messaging - Common Implementation
- * Client implementation
+ * Client abstract implementation
  * Copyright (C) 4/30/16 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify

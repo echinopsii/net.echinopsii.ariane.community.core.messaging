@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package net.echinopsii.ariane.community.scenarios.commons.momcli.rabbitmq;
+package net.echinopsii.community.messaging.nats;
 
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
@@ -41,14 +41,14 @@ public class FireAndForgetTest {
     public static void testSetup() throws IllegalAccessException, ClassNotFoundException, InstantiationException {
         Properties props = new Properties();
         props.put(MomClient.MOM_HOST, "localhost");
-        props.put(MomClient.MOM_PORT, 5672);
+        props.put(MomClient.MOM_PORT, 4222);
 
-        client = MomClientFactory.make("net.echinopsii.ariane.community.messaging.rabbitmq.Client");
+        client = MomClientFactory.make("net.echinopsii.ariane.community.messaging.nats.Client");
 
         try {
             client.init(props);
         } catch (Exception e) {
-            System.err.println("No local rabbit to test");
+            System.err.println("No local NATS to test");
             client = null;
         }
     }
@@ -59,7 +59,7 @@ public class FireAndForgetTest {
             client.close();
     }
 
-    final static String sendedMsgBody = "Hello Rabbit!";
+    final static String sendedMsgBody = "Hello NATS";
 
     class TestMsgWorker implements AppMsgWorker {
 
@@ -83,11 +83,11 @@ public class FireAndForgetTest {
         if (client!=null) {
             TestMsgWorker test = new TestMsgWorker();
 
-            client.getServiceFactory().requestService("FAF_QUEUE", test);
+            client.getServiceFactory().requestService("FAF_SUBJECT", test);
 
             Map<String, Object> message = new HashMap<String, Object>();
             message.put(MomMsgTranslator.MSG_BODY, sendedMsgBody);
-            client.createRequestExecutor().fireAndForget(message, "FAF_QUEUE");
+            client.createRequestExecutor().fireAndForget(message, "FAF_SUBJECT");
 
             Thread.sleep(1000);
 

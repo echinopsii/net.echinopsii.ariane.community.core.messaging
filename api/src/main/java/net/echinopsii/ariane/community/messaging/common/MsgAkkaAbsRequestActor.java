@@ -1,7 +1,7 @@
 /**
- * Messaging - RabbitMQ Implementation
- * Message Request Actor
- * Copyright (C) 28/08/14 echinopsii
+ * Messaging - Common Implementation
+ * Message Request Actor Abstract Implementation
+ * Copyright (C) 04/30/16 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
