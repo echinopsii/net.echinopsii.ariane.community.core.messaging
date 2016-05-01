@@ -37,6 +37,7 @@ public class Client extends MomAkkaAbsClient implements MomClient {
     private static final Logger log = LoggerFactory.getLogger(Client.class);
 
     private Connection connection = null;
+    private ConnectionFactory factory = null;
 
     @Override
     public void init(Dictionary properties) throws Exception {
@@ -49,13 +50,15 @@ public class Client extends MomAkkaAbsClient implements MomClient {
             super.setActorSystem(ActorSystem.create("MySystem"));
         }
 
-        ConnectionFactory factory = new ConnectionFactory();
+        factory = new ConnectionFactory();
         factory.setHost((String) properties.get(MOM_HOST));
         factory.setPort(new Integer((String) properties.get(MOM_PORT)));
         if (properties.get(MOM_USER)!=null)
             factory.setUsername((String) properties.get(MOM_USER));
         if (properties.get(MOM_PSWD)!=null)
             factory.setPassword((String) properties.get(MOM_PSWD));
+        if (properties.get(NATS_CONNECTION_NAME)!=null)
+            factory.setConnectionName((String) properties.get(NATS_CONNECTION_NAME));
 
         connection = factory.createConnection();
 
@@ -93,5 +96,9 @@ public class Client extends MomAkkaAbsClient implements MomClient {
             e.printStackTrace();
         }
         return ret;
+    }
+
+    public ConnectionFactory getFactory() {
+        return factory;
     }
 }

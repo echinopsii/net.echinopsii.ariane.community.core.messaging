@@ -19,12 +19,15 @@
 
 package net.echinopsii.ariane.community.messaging.nats;
 
+import io.nats.client.Connection;
+import io.nats.client.Message;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecutor;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
 
@@ -34,16 +37,33 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
 
     @Override
     public Map<String, Object> fireAndForget(Map<String, Object> request, String destination) {
-        return null;
-    }
-
-    @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, AppMsgWorker answerCB) {
-        return null;
+        Message message = new MsgTranslator().encode(request);
+        message.setSubject(destination);
+        try {
+            ((Connection)super.getMomClient().getConnection()).publish(message);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return request;
     }
 
     @Override
     public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) {
-        return null;
+        Map<String, Object> response = null;
+        Message message = new MsgTranslator().encode(request);
+        message.setSubject(destination);
+        try {
+            Message msgResponse = ((Connection)super.getMomClient().getConnection()).request(
+                    message.getSubject(), message.getData()
+            );
+            response = new MsgTranslator().decode(msgResponse);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if (answerCB!=null)
+            response = answerCB.apply(response);
+
+        return response;
     }
 }
