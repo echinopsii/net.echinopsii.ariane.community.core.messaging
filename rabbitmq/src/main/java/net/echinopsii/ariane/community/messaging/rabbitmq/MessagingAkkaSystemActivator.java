@@ -36,6 +36,6 @@ public class MessagingAkkaSystemActivator extends ActorSystemActivator {
     @Override
     public void configure(BundleContext context, ActorSystem system) {
         this.system = system;
-        log.info("Ariane Messaging Akka System activated");
+        log.info("Ariane Messaging RabbitMQ Akka System activated");
     }
 }
