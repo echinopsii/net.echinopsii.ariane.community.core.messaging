@@ -27,6 +27,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -38,12 +39,10 @@ public class FireAndForgetTest {
     private static MomClient client = null;
 
     @BeforeClass
-    public static void testSetup() throws IllegalAccessException, ClassNotFoundException, InstantiationException {
+    public static void testSetup() throws IllegalAccessException, ClassNotFoundException, InstantiationException, IOException {
         Properties props = new Properties();
-        props.put(MomClient.MOM_HOST, "localhost");
-        props.put(MomClient.MOM_PORT, 4222);
-
-        client = MomClientFactory.make("net.echinopsii.ariane.community.messaging.nats.Client");
+        props.load(ClientTest.class.getResourceAsStream("/nats-test.properties"));
+        client = MomClientFactory.make(props.getProperty(MomClient.MOM_CLI));
 
         try {
             client.init(props);

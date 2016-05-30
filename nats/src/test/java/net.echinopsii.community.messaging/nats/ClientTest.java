@@ -25,6 +25,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Properties;
 
 import static junit.framework.TestCase.assertNotNull;
@@ -35,23 +36,24 @@ public class ClientTest {
     private static MomClient client = null;
 
     @BeforeClass
-    public static void testSetup() throws IllegalAccessException, ClassNotFoundException, InstantiationException {
+    public static void testSetup() throws IllegalAccessException, ClassNotFoundException, InstantiationException, IOException {
         Properties props = new Properties();
-        props.put(MomClient.MOM_HOST, "localhost");
-        props.put(MomClient.MOM_PORT, "4222");
+        props.load(ClientTest.class.getResourceAsStream("/nats-test.properties"));
+        //props.put(MomClient.MOM_HOST, "localhost");
+        //props.put(MomClient.MOM_PORT, "4222");
         //props.put(MomClient.MOM_USER, "ariane");
         //props.put(MomClient.MOM_PSWD, "password");
-        props.put(MomClient.NATS_CONNECTION_NAME, "ClientTest");
+        //props.put(MomClient.NATS_CONNECTION_NAME, "ClientTest");
         //props.put("ariane.pgurl", "jmx://frontoffice-01.lab01.dev.dekatonshivr.echinopsii.net:9010");
         //props.put("ariane.osi", "frontoffice-01.lab01.dev.dekatonshivr.echinopsii.net");
         //props.put("ariane.otm", "FrontOffice OPS Team");
         //props.put("ariane.dtm", "FrontOffice DEV Team");
-        client = MomClientFactory.make("net.echinopsii.ariane.community.messaging.nats.Client");
+        client = MomClientFactory.make(props.getProperty(MomClient.MOM_CLI));
 
         try {
             client.init(props);
         } catch (Exception e) {
-            System.err.println("No local rabbit to test");
+            System.err.println("No local NATS to test");
             client = null;
         }
     }
@@ -70,5 +72,9 @@ public class ClientTest {
             assertNotNull(client.createRequestExecutor());
             assertNotNull(client.getServiceFactory());
         }
+    }
+
+    public static MomClient getClient() {
+        return client;
     }
 }
