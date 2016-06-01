@@ -78,6 +78,9 @@
         <version.org.apache.ipojo>1.11.0</version.org.apache.ipojo>
         <version.org.slf4j>1.6.4</version.org.slf4j>
 
+        <version.com.fasterxml.jackson>2.1.2</version.com.fasterxml.jackson>
+
+
         <!-- OSGI Min/Max versions -->
         <version.osgimin.org.osgi.framework>1.5</version.osgimin.org.osgi.framework>
         <version.osgimax.org.osgi.framework>2</version.osgimax.org.osgi.framework>
@@ -196,6 +199,18 @@
     </build>
 
     <dependencies>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <scope>provided</scope>
+            <version>${version.com.fasterxml.jackson}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>provided</scope>
+            <version>${version.com.fasterxml.jackson}</version>
+        </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-actor_2.10</artifactId>
