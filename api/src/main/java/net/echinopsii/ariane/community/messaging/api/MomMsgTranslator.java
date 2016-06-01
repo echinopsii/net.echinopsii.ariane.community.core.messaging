@@ -23,19 +23,21 @@ import java.util.Map;
 
 public interface MomMsgTranslator<M> {
 
-    public final String MSG_APPLICATION_ID = "MSG_APPLICATION_ID";
-    public final String MSG_CORRELATION_ID = "MSG_CORRELATION_ID";
-    public final String MSG_DELIVERY_MODE = "MSG_DELIVERY_MODE";
-    public final String MSG_EXPIRATION    = "MSG_EXPIRATION";
-    public final String MSG_MESSAGE_ID    = "MSG_MESSAGE_ID";
-    public final String MSG_PRIORITY      = "MSG_PRIORITY";
-    public final String MSG_REPLY_TO      = "MSG_REPLY_TO";
-    public final String MSG_TIMESTAMP     = "MSG_TIMESTAMP";
-    public final String MSG_TYPE          = "MSG_TYPE";
-    public final String MSG_BODY          = "MSG_BODY";
+    String MSG_APPLICATION_ID = "MSG_APPLICATION_ID";
+    String MSG_CORRELATION_ID = "MSG_CORRELATION_ID";
+    String MSG_DELIVERY_MODE = "MSG_DELIVERY_MODE";
+    String MSG_EXPIRATION    = "MSG_EXPIRATION";
+    String MSG_MESSAGE_ID    = "MSG_MESSAGE_ID";
+    String MSG_PRIORITY      = "MSG_PRIORITY";
+    String MSG_REPLY_TO      = "MSG_REPLY_TO";
+    String MSG_TIMESTAMP     = "MSG_TIMESTAMP";
+    String MSG_TYPE          = "MSG_TYPE";
+    String MSG_BODY          = "MSG_BODY";
+    String MSG_RC            = "RC";
+    String MSG_ERR           = "ERROR_MESSAGE";
 
-    public Map<String, Class>  getMessageTypo();
+    Map<String, Class>  getMessageTypo();
 
-    public M                   encode(Map<String, Object> message);
-    public Map<String, Object> decode(M message);
+    M                   encode(Map<String, Object> message);
+    Map<String, Object> decode(M message);
 }
