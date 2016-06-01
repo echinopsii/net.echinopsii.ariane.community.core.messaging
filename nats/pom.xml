@@ -13,7 +13,7 @@
     <artifactId>net.echinopsii.ariane.community.messaging.nats</artifactId>
     <name>Ariane Community Messaging : Pattern MoM NATS impl</name>
     <packaging>bundle</packaging>
-    
+
 
     <dependencies>
         <dependency>
