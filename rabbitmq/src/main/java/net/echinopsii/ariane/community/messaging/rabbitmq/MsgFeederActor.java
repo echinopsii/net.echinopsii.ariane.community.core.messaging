@@ -60,7 +60,8 @@ public class MsgFeederActor extends MsgAkkaAbsFeederActor {
     public void onReceive(Object message) throws Exception {
         if (message instanceof String && ((String)message).equals(AppMsgFeeder.MSG_FEED_NOW)) {
             Map<String, Object> newFeed = super.getMsgFeeder().apply();
-            newFeed.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
+            if (super.getClient().getClientID()!=null)
+                newFeed.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
             Message newFeedMsg = ((MsgTranslator)super.getTranslator()).encode(newFeed);
             channel.basicPublish(super.getBaseDest(), super.getSelector(), (com.rabbitmq.client.AMQP.BasicProperties) newFeedMsg.getProperties(), newFeedMsg.getBody());
         } else

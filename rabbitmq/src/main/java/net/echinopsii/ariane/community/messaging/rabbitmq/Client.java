@@ -72,8 +72,6 @@ public class Client extends MomAkkaAbsClient implements MomClient {
         if (properties.get(MomClient.RBQ_INFORMATION_KEY)!=null) {
             super.setClientID((String) properties.get(MomClient.RBQ_INFORMATION_KEY));
             factoryProperties.put(RBQ_INFORMATION_KEY, super.getClientID());
-        } else {
-            super.setClientID((String)properties.get(RBQ_INFORMATION_KEY));
         }
         if (properties.get(MomClient.RBQ_PLATFORM_KEY)!=null)
             factoryProperties.put(RBQ_PLATFORM_KEY,properties.get(MomClient.RBQ_PLATFORM_KEY));

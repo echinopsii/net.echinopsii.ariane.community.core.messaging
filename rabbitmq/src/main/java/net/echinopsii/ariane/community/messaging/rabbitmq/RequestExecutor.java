@@ -53,7 +53,8 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             channel.queueBind(destination, FAF_EXCHANGE, destination);
 
             Message message = new MsgTranslator().encode(request);
-            request.put(MomMsgTranslator.MSG_APPLICATION_ID, super.getMomClient().getClientID());
+            if (super.getMomClient().getClientID()!=null)
+                request.put(MomMsgTranslator.MSG_APPLICATION_ID, super.getMomClient().getClientID());
             channel.basicPublish(FAF_EXCHANGE, destination, (com.rabbitmq.client.AMQP.BasicProperties) message.getProperties(), message.getBody());
         } catch (IOException e) {
             e.printStackTrace();
@@ -88,7 +89,8 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             String corrId = UUID.randomUUID().toString();
             request.put(MsgTranslator.MSG_CORRELATION_ID, corrId);
             request.put(MsgTranslator.MSG_REPLY_TO, replyQueueName);
-            request.put(MomMsgTranslator.MSG_APPLICATION_ID, super.getMomClient().getClientID());
+            if (super.getMomClient().getClientID()!=null)
+                request.put(MomMsgTranslator.MSG_APPLICATION_ID, super.getMomClient().getClientID());
 
             Message message = new MsgTranslator().encode(request);
             channel.basicPublish(RPC_EXCHANGE, destination, (com.rabbitmq.client.AMQP.BasicProperties) message.getProperties(), message.getBody());

@@ -62,7 +62,8 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
             Map<String, Object> reply = super.getMsgWorker().apply(finalMessage);
             if (properties.getReplyTo()!=null && properties.getCorrelationId()!=null && reply!=null) {
                 reply.put(MsgTranslator.MSG_CORRELATION_ID, properties.getCorrelationId());
-                reply.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
+                if (super.getClient().getClientID()!=null)
+                    reply.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
                 Message replyMessage = ((MsgTranslator)super.getTranslator()).encode(reply);
                 String replyTo = properties.getReplyTo();
                 channel.basicPublish("", replyTo, (AMQP.BasicProperties) replyMessage.getProperties(), replyMessage.getBody());

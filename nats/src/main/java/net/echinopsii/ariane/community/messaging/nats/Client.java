@@ -57,8 +57,10 @@ public class Client extends MomAkkaAbsClient implements MomClient {
             factory.setUsername((String) properties.get(MOM_USER));
         if (properties.get(MOM_PSWD)!=null)
             factory.setPassword((String) properties.get(MOM_PSWD));
-        if (properties.get(NATS_CONNECTION_NAME)!=null)
+        if (properties.get(NATS_CONNECTION_NAME)!=null) {
             factory.setConnectionName((String) properties.get(NATS_CONNECTION_NAME));
+            super.setClientID((String) properties.get(NATS_CONNECTION_NAME));
+        }
 
         connection = factory.createConnection();
 
