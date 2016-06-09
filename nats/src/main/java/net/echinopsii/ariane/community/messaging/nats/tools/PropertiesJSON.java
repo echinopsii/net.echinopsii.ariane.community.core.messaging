@@ -343,8 +343,7 @@ public class PropertiesJSON {
         for (String key : mobj.keySet()) {
             Object val = mobj.get(key);
             String type = getTypeFromObject(val);
-            jgenerator.writeObjectFieldStart(key);
-            jgenerator.writeStartArray();
+            jgenerator.writeArrayFieldStart(key);
             jgenerator.writeString(type);
             valueToJSON(val, jgenerator);
             jgenerator.writeEndArray();
@@ -367,7 +366,9 @@ public class PropertiesJSON {
             if (item!=null) type = getTypeFromObject(item);
         }
         if (type!=null) jgenerator.writeString(type);
+        jgenerator.writeStartArray();
         for (Object value : aobj) valueToJSON(value, jgenerator);
+        jgenerator.writeEndArray();
         jgenerator.writeEndArray();
     }
 
