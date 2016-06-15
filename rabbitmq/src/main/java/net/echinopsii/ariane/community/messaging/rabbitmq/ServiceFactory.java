@@ -80,8 +80,8 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
 
                         while (isRunning) {
                             try {
-                                QueueingConsumer.Delivery delivery = consumer.nextDelivery();
-                                runnableReqActor.tell(delivery, null);
+                                QueueingConsumer.Delivery delivery = consumer.nextDelivery(10);
+                                if (delivery!=null && isRunning) runnableReqActor.tell(delivery, null);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
@@ -92,7 +92,8 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                         e.printStackTrace();
                     } finally {
                         try {
-                            runnableChannel.close();
+                            if (runnableChannel.getConnection().isOpen())
+                                runnableChannel.close();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -112,6 +113,11 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 @Override
                 public void stop() {
                     isRunning = false;
+                    try {
+                        Thread.sleep(20);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             };
             consumer.start();
@@ -179,21 +185,22 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
 
                         while (isRunning) {
                             try {
-                                QueueingConsumer.Delivery delivery = consumer.nextDelivery();
-                                runnableSubsActor.tell(delivery, null);
+                                QueueingConsumer.Delivery delivery = consumer.nextDelivery(10);
+                                if (delivery!=null && isRunning) runnableSubsActor.tell(delivery, null);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
 
                         }
-
-                        channel.close();
+                        if (channel.getConnection().isOpen())
+                            channel.close();
 
                     } catch (IOException e) {
                         e.printStackTrace();
                     } finally {
                         try {
-                            channel.close();
+                            if (channel.getConnection().isOpen())
+                                channel.close();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -213,6 +220,11 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 @Override
                 public void stop() {
                     isRunning = false;
+                    try {
+                        Thread.sleep(20);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             };
 

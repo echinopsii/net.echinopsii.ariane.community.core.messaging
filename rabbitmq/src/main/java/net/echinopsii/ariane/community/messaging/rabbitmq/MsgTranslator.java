@@ -22,6 +22,8 @@ package net.echinopsii.ariane.community.messaging.rabbitmq;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.LongString;
+import com.rabbitmq.client.impl.LongStringHelper;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 
 import java.util.Date;
@@ -123,11 +125,15 @@ public class MsgTranslator implements MomMsgTranslator<Message>{
             Map<String, Object> headerFields = properties.getHeaders();
             if (headerFields!=null) {
                 for (String key : headerFields.keySet())
-                    decodedMessage.put(key, headerFields.get(key));
+                    if (headerFields.get(key)!=null) {
+                        if (headerFields.get(key) instanceof LongString) decodedMessage.put(key, headerFields.get(key).toString());
+                        else decodedMessage.put(key, headerFields.get(key));
+                    } else decodedMessage.put(key, headerFields.get(key));
             }
         }
 
-        decodedMessage.put(MSG_BODY, body);
+        if (body.length==0) decodedMessage.put(MSG_BODY, null);
+        else decodedMessage.put(MSG_BODY, body);
 
         return decodedMessage;
     }

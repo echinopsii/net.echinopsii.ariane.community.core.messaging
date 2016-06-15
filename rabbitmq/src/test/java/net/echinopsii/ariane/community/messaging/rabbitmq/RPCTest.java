@@ -27,6 +27,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -38,12 +39,23 @@ public class RPCTest {
     private static MomClient client = null;
 
     @BeforeClass
-    public static void testSetup() throws IllegalAccessException, ClassNotFoundException, InstantiationException {
+    public static void testSetup() throws IllegalAccessException, ClassNotFoundException, InstantiationException, IOException {
+        Properties props = new Properties();
+        props.load(ClientTest.class.getResourceAsStream("/rabbitmq-test.properties"));
+        /*
         Properties props = new Properties();
         props.put(MomClient.MOM_HOST, "localhost");
-        props.put(MomClient.MOM_PORT, 5672);
+        props.put(MomClient.MOM_PORT, "5672");
+        props.put(MomClient.MOM_USER, "ariane");
+        props.put(MomClient.MOM_PSWD, "password");
+        props.put(MomClient.RBQ_VHOST, "/ariane");
+        */
+        props.put("ariane.pgurl", "jmx://frontoffice-01.lab01.dev.dekatonshivr.echinopsii.net:9010");
+        props.put("ariane.osi", "frontoffice-01.lab01.dev.dekatonshivr.echinopsii.net");
+        props.put("ariane.otm", "FrontOffice OPS Team");
+        props.put("ariane.dtm", "FrontOffice DEV Team");
 
-        client = MomClientFactory.make("net.echinopsii.ariane.community.messaging.rabbitmq.Client");
+        client = MomClientFactory.make(props.getProperty(MomClient.MOM_CLI));
 
         try {
             client.init(props);
