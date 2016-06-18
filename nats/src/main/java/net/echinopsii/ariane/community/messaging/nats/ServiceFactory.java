@@ -64,7 +64,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 } catch (IOException e) {
                     e.printStackTrace();
                 } finally {
-                    if (subs!=null) {
+                    if (!connection.isClosed() && subs!=null) {
                         try {
                             subs.unsubscribe();
                             subs.close();
