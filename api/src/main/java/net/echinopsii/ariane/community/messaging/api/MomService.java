@@ -20,15 +20,17 @@
 package net.echinopsii.ariane.community.messaging.api;
 
 public interface MomService<A> {
+    MomConsumer getConsumer();
+    MomService setConsumer(MomConsumer consumer);
 
-    public MomConsumer getConsumer();
-    public MomService setConsumer(MomConsumer consumer);
+    A getMsgWorker();
+    MomService setMsgWorker(A actorRef);
 
-    public A getMsgWorker();
-    public MomService setMsgWorker(A actorRef);
+    A getMsgFeeder();
+    MomService setMsgFeeder(A actorRef, int schedulerInterval);
 
-    public A getMsgFeeder();
-    public MomService setMsgFeeder(A actorRef, int schedulerInterval);
+    MomMsgGroupSubServiceMgr getMsgGroupSubServiceMgr();
+    MomService setMsgGroupSubServiceMgr(MomMsgGroupSubServiceMgr groupMgr);
 
-    public void stop();
+    void stop();
 }

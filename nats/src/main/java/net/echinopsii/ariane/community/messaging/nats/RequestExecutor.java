@@ -27,7 +27,6 @@ import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecuto
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.TimeoutException;
 
 public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
 
@@ -37,6 +36,8 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
 
     @Override
     public Map<String, Object> fireAndForget(Map<String, Object> request, String destination) {
+        String groupID = super.getMomClient().getCurrentMsgGroup();
+        if (groupID!=null) destination = groupID + "-" + destination;
         Message message = new MsgTranslator().encode(request);
         message.setSubject(destination);
         try {
@@ -50,6 +51,8 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     @Override
     public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) {
         Map<String, Object> response = null;
+        String groupID = super.getMomClient().getCurrentMsgGroup();
+        if (groupID!=null) destination = groupID + "-" + destination;
         Message message = new MsgTranslator().encode(request);
         message.setSubject(destination);
         try {

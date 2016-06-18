@@ -28,11 +28,130 @@ import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsServiceFactory
 import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
 
     public ServiceFactory(Client client) {
         super(client);
+    }
+
+    private static ActorRef createRequestActor(String source, MomClient client, Channel channel, AppMsgWorker requestCB) {
+        return ((Client)client).getActorSystem().actorOf(
+                MsgRequestActor.props(((Client)client), channel, requestCB), source + "_msgWorker"
+        );
+    }
+
+    private static MomConsumer createConsumer(final String source, final Channel channel, final ActorRef runnableReqActor) {
+        return new MomConsumer() {
+            private boolean isRunning = false;
+
+            @Override
+            public void run() {
+                try {
+                    channel.queueDeclare(source, false, false, false, null);
+
+                    QueueingConsumer consumer = new QueueingConsumer(channel);
+                    channel.basicConsume(source, false, consumer);
+                    isRunning = true;
+
+                    while (isRunning) {
+                        try {
+                            QueueingConsumer.Delivery delivery = consumer.nextDelivery(10);
+                            if (delivery!=null && isRunning) runnableReqActor.tell(delivery, null);
+                        } catch (InterruptedException e) {
+                            // no message
+                        }
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        if (channel.getConnection()!=null && channel.getConnection().isOpen()) {
+                            channel.queueDelete(source);
+                            //channel.close();
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            @Override
+            public boolean isRunning() {
+                return isRunning;
+            }
+
+            @Override
+            public void start() {
+                new Thread(this).start();
+            }
+
+            @Override
+            public void stop() {
+                isRunning = false;
+                try {
+                    Thread.sleep(20);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+    }
+
+    private static MomMsgGroupSubServiceMgr createSessionManager(final String source, final Channel channel, final ActorRef runnableReqActor) {
+        return new MomMsgGroupSubServiceMgr() {
+            HashMap<String, MomConsumer> sessionConsumersRegistry = new HashMap<>();
+            @Override
+            public void openMsgGroupSubService(String groupID) {
+                final String sessionSource = groupID + "-" + source;
+                sessionConsumersRegistry.put(groupID, ServiceFactory.createConsumer(sessionSource, channel, runnableReqActor));
+                sessionConsumersRegistry.get(groupID).start();
+            }
+
+            @Override
+            public void closeMsgGroupSubService(String groupID) {
+                if (sessionConsumersRegistry.containsKey(groupID)) {
+                    sessionConsumersRegistry.get(groupID).stop();
+                    sessionConsumersRegistry.remove(groupID);
+                }
+            }
+
+            @Override
+            public void stop() {
+                for (String sessionID : sessionConsumersRegistry.keySet()) {
+                    sessionConsumersRegistry.get(sessionID).stop();
+                    sessionConsumersRegistry.remove(sessionID);
+                }
+            }
+        };
+    }
+
+    @Override
+    public MomAkkaService msgGroupRequestService(String source, AppMsgWorker requestCB) {
+        final Connection  connection   = ((Client)super.getMomClient()).getConnection();
+        MomAkkaService ret = null;
+        ActorRef    requestActor ;
+        MomConsumer consumer ;
+        MomMsgGroupSubServiceMgr msgGroupMgr ;
+
+        if (connection != null && connection.isOpen()) {
+            try {
+                Channel channel = connection.createChannel();
+                channel.basicQos(1);
+                requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), channel, requestCB);
+                consumer = ServiceFactory.createConsumer(source, channel, requestActor);
+                msgGroupMgr = ServiceFactory.createSessionManager(source, channel, requestActor);
+                consumer.start();
+                ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient((Client) super.getMomClient()).setMsgGroupSubServiceMgr(msgGroupMgr);
+                super.getServices().add(ret);
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return ret;
     }
 
     /**
@@ -48,84 +167,22 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
     public MomAkkaService requestService(final String source, final AppMsgWorker requestCB) {
         final Connection  connection   = ((Client)super.getMomClient()).getConnection();
         MomAkkaService ret          = null;
-        ActorRef    requestActor = null;
-        MomConsumer consumer     = null;
+        ActorRef    requestActor ;
+        MomConsumer consumer ;
 
         if (connection != null && connection.isOpen()) {
-            Channel channel = null;
             try {
-                channel = connection.createChannel();
+                Channel channel = connection.createChannel();
                 channel.basicQos(1);
+                requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), channel, requestCB);
+                consumer = ServiceFactory.createConsumer(source, channel, requestActor);
+                consumer.start();
+
+                ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient(((Client) super.getMomClient()));
+                super.getServices().add(ret);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
-            requestActor = ((Client)super.getMomClient()).getActorSystem().actorOf(
-                    MsgRequestActor.props(((Client)super.getMomClient()), channel, requestCB), source + "_msgWorker"
-            );
-            final ActorRef runnableReqActor   = requestActor;
-            final Channel  runnableChannel    = channel;
-
-            consumer = new MomConsumer() {
-                private boolean isRunning = false;
-
-                @Override
-                public void run() {
-                    try {
-                        runnableChannel.queueDeclare(source, false, false, false, null);
-
-                        QueueingConsumer consumer = new QueueingConsumer(runnableChannel);
-                        runnableChannel.basicConsume(source, false, consumer);
-                        isRunning = true;
-
-                        while (isRunning) {
-                            try {
-                                QueueingConsumer.Delivery delivery = consumer.nextDelivery(10);
-                                if (delivery!=null && isRunning) runnableReqActor.tell(delivery, null);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-
-                        }
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } finally {
-                        try {
-                            if (runnableChannel.getConnection().isOpen())
-                                runnableChannel.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-
-                @Override
-                public boolean isRunning() {
-                    return isRunning;
-                }
-
-                @Override
-                public void start() {
-                    new Thread(this).start();
-                }
-
-                @Override
-                public void stop() {
-                    isRunning = false;
-                    try {
-                        Thread.sleep(20);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            };
-            consumer.start();
-
-            ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient(
-                    ((Client) super.getMomClient())
-            );
-            super.getServices().add(ret);
         }
 
         return ret;

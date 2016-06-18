@@ -22,6 +22,7 @@ package net.echinopsii.ariane.community.messaging.common;
 import akka.actor.ActorSystem;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
+import net.echinopsii.ariane.community.messaging.api.MomService;
 import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
 
 import java.util.*;
@@ -33,6 +34,9 @@ public abstract class MomAkkaAbsClient implements MomClient {
 
     private MomServiceFactory serviceFactory ;
     private List<MomRequestExecutor> requestExecutors = new ArrayList<MomRequestExecutor>();
+
+    private HashMap<String, Long> sessionThreadRegistry = new HashMap<>();
+    private HashMap<Long, String> threadSessionRegistry = new HashMap<>();
 
     @Override
     public void init(Properties properties) throws Exception {
@@ -71,5 +75,42 @@ public abstract class MomAkkaAbsClient implements MomClient {
 
     public List<MomRequestExecutor> getRequestExecutors() {
         return requestExecutors;
+    }
+
+    @Override
+    public void openMsgGroupRequest(String groupID) {
+        Long threadID = Thread.currentThread().getId();
+        this.sessionThreadRegistry.put(groupID, threadID);
+        this.threadSessionRegistry.put(threadID, groupID);
+    }
+
+    @Override
+    public String getCurrentMsgGroup() {
+        Long threadID = Thread.currentThread().getId();
+        return threadSessionRegistry.get(threadID);
+    }
+
+    @Override
+    public void closeMsgGroupRequest(String groupID) {
+        Long threadID = this.sessionThreadRegistry.get(groupID);
+        if (threadID!=null) {
+            this.threadSessionRegistry.remove(threadID);
+            this.sessionThreadRegistry.remove(groupID);
+        }
+    }
+
+    @Override
+    public void openMsgGroupService(String groupID) {
+
+        if (this.getServiceFactory()!=null)
+            for (MomService service : ((MomAkkaAbsServiceFactory)this.getServiceFactory()).getServices())
+                if (service.getMsgGroupSubServiceMgr()!=null) service.getMsgGroupSubServiceMgr().openMsgGroupSubService(groupID);
+    }
+
+    @Override
+    public void closeMsgGroupService(String groupID) {
+        if (this.getServiceFactory()!=null)
+            for (MomService service : ((MomAkkaAbsServiceFactory)this.getServiceFactory()).getServices())
+                if (service.getMsgGroupSubServiceMgr()!=null) service.getMsgGroupSubServiceMgr().closeMsgGroupSubService(groupID);
     }
 }

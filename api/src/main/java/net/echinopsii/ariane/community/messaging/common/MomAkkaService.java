@@ -21,16 +21,13 @@ package net.echinopsii.ariane.community.messaging.common;
 
 import akka.actor.ActorRef;
 import akka.actor.Cancellable;
-import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder;
-import net.echinopsii.ariane.community.messaging.api.MomClient;
-import net.echinopsii.ariane.community.messaging.api.MomConsumer;
-import net.echinopsii.ariane.community.messaging.api.MomService;
+import net.echinopsii.ariane.community.messaging.api.*;
 import scala.concurrent.duration.Duration;
 
 import java.util.concurrent.TimeUnit;
 
 public class MomAkkaService implements MomService<ActorRef>{
-
+    private MomMsgGroupSubServiceMgr sessionMgr;
     private MomConsumer consumer;
     private ActorRef    msgWorker;
     private ActorRef    msgFeeder;
@@ -77,8 +74,20 @@ public class MomAkkaService implements MomService<ActorRef>{
     }
 
     @Override
+    public MomMsgGroupSubServiceMgr getMsgGroupSubServiceMgr() {
+        return sessionMgr;
+    }
+
+    @Override
+    public MomAkkaService setMsgGroupSubServiceMgr(MomMsgGroupSubServiceMgr groupMgr) {
+        this.sessionMgr = groupMgr;
+        return this;
+    }
+
+    @Override
     public void stop() {
         if (consumer != null) consumer.stop();
+        if (sessionMgr!=null) sessionMgr.stop();
         if (msgFeeder != null) client.getActorSystem().stop(msgFeeder);
         if (msgWorker !=null) client.getActorSystem().stop(msgWorker);
         if (cancellable != null) cancellable.cancel();

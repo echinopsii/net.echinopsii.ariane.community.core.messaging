@@ -22,7 +22,15 @@ import java.util.List;
 
 public interface MomServiceFactory<SRV extends MomService, C extends AppMsgWorker, F extends AppMsgFeeder, S> {
     /**
-     * request worker from a source
+     * request worker from a source - can manage message grouping (usefull for mono-thread sessions)
+     * @param source the source where request are coming from
+     * @param requestCB the application request worker
+     * @return service
+     */
+    public SRV msgGroupRequestService(S source, C requestCB);
+
+    /**
+     * request worker from a source - no transaction possible here.
      * @param source the source where request are coming from
      * @param requestCB the application request worker
      * @return service
@@ -46,7 +54,7 @@ public interface MomServiceFactory<SRV extends MomService, C extends AppMsgWorke
     public SRV subscriberService(S source, String selector, C feedCB);
 
     /**
-     * get actor(s) of this service
+     * get services list
      *
      * @return the service list
      */

@@ -48,6 +48,9 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     @Override
     public Map<String, Object> fireAndForget(Map<String, Object> request, String destination) {
         try {
+            String groupID = super.getMomClient().getCurrentMsgGroup();
+            if (groupID!=null) destination = groupID + "-" + destination;
+
             channel.exchangeDeclare(FAF_EXCHANGE, EXCHANGE_TYPE_DIRECT);
             channel.queueDeclare(destination, false, false, false, null);
             channel.queueBind(destination, FAF_EXCHANGE, destination);
@@ -66,6 +69,9 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) {
         Map<String, Object> response = null;
         try {
+            String groupID = super.getMomClient().getCurrentMsgGroup();
+            if (groupID!=null) destination = groupID + "-" + destination;
+
             channel.exchangeDeclare(RPC_EXCHANGE, EXCHANGE_TYPE_DIRECT);
             channel.queueDeclare(destination, false, false, false, null);
             channel.queueBind(destination, RPC_EXCHANGE, destination);
