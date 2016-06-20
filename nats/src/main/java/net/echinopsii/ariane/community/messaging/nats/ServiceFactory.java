@@ -25,12 +25,15 @@ import io.nats.client.SyncSubscription;
 import net.echinopsii.ariane.community.messaging.api.*;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsServiceFactory;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.concurrent.TimeoutException;
 
 public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
+    private static final Logger log = LoggerFactory.getLogger(ServiceFactory.class);
 
     public ServiceFactory(Client client) {
         super(client);
@@ -58,7 +61,9 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                             Message msg = subs.nextMessage(10);
                             if (msg!=null && isRunning) runnableReqActor.tell(msg, null);
                         } catch (TimeoutException e) {
-                            //no message found
+                            log.debug("no message found during last 10 ms");
+                        } catch (IllegalStateException e) {
+                            if (isRunning) log.error(e.getMessage());
                         }
                     }
                 } catch (IOException e) {
