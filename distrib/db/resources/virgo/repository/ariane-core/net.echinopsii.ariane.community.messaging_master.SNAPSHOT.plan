@@ -1,9 +1,10 @@
-<plan name="net.echinopsii.ariane.community.messaging" version="0.1.1.SNAPSHOT" scoped="false" atomic="false"
+<plan name="net.echinopsii.ariane.community.messaging" version="0.2.1.SNAPSHOT" scoped="false" atomic="false"
                 xmlns="http://www.eclipse.org/virgo/schema/plan"
 				xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 				xsi:schemaLocation="
 				        http://www.eclipse.org/virgo/schema/plan
 				        http://www.eclipse.org/virgo/schema/plan/eclipse-virgo-plan.xsd">
-    <artifact type="bundle" name="net.echinopsii.ariane.community.messaging.api" version="[0.1.0,0.2.0)"/>
-    <artifact type="bundle" name="net.echinopsii.ariane.community.messaging.rabbitmq" version="[0.1.0,0.2.0)"/>
+    <artifact type="bundle" name="net.echinopsii.ariane.community.messaging.api" version="[0.2.0,0.3.0)"/>
+    <artifact type="bundle" name="net.echinopsii.ariane.community.messaging.nats" version="[0.2.0,0.3.0)"/>
+    <artifact type="bundle" name="net.echinopsii.ariane.community.messaging.rabbitmq" version="[0.2.0,0.3.0)"/>
     </plan>
