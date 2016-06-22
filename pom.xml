@@ -5,7 +5,7 @@
     <!-- General information -->
     <groupId>net.echinopsii.ariane.community</groupId>
     <artifactId>net.echinopsii.ariane.community.messaging</artifactId>
-    <version>0.1.1-SNAPSHOT</version>
+    <version>0.2.0</version>
     <name>Ariane Community Messaging Parent</name>
     <packaging>pom</packaging>
     
@@ -13,7 +13,7 @@
         <module>api</module>
         <module>nats</module>
         <module>rabbitmq</module>
-    </modules>
+        </modules>
     
     <repositories>
         <repository>
@@ -77,6 +77,7 @@
         <version.org.slf4j>1.6.4</version.org.slf4j>
 
         <version.com.fasterxml.jackson>2.1.2</version.com.fasterxml.jackson>
+
 
         <!-- OSGI Min/Max versions -->
         <version.osgimin.org.osgi.framework>1.5</version.osgimin.org.osgi.framework>
