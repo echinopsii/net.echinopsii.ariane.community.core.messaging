@@ -47,7 +47,9 @@
                 <configuration>
                     <instructions>
                         <Import-Package>
-                            net.echinopsii.ariane.community.messaging.rabbitmq;version=${project.version}
+                            net.echinopsii.ariane.community.messaging.rabbitmq;version=${project.version};resolution:=optional,
+                            net.echinopsii.ariane.community.messaging.nats;version=${project.version};resolution:=optional,
+                            *
                         </Import-Package>
                     </instructions>
                 </configuration>
