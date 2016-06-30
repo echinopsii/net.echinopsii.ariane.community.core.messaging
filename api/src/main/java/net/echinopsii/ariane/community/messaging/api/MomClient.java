@@ -42,8 +42,13 @@ public interface MomClient {
 
     // ARIANE SPECIFIC PROPERTIES KEYS BEGIN WITH
     String ARIANE_KEYS = "ariane";
-
-
+    String ARIANE_PGURL_KEY = "ariane.pgurl";
+    String ARIANE_OSI_KEY = "ariane.osi";
+    String ARIANE_OTM_KEY = "ariane.otm";
+    String ARIANE_OTM_NOT_DEFINED = "OTM_NOT_DEFINED";
+    String ARIANE_CMP_KEY = "ariane.cmp";
+    String ARIANE_APP_KEY = "ariane.app";
+    String ARIANE_PID_KEY = "ariane.pid";
 
     String getClientID();
 
