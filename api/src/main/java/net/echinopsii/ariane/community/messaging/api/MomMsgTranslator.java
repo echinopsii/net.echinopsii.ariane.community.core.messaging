@@ -33,8 +33,17 @@ public interface MomMsgTranslator<M> {
     String MSG_TIMESTAMP     = "MSG_TIMESTAMP";
     String MSG_TYPE          = "MSG_TYPE";
     String MSG_BODY          = "MSG_BODY";
+
     String MSG_RC            = "RC";
-    String MSG_ERR           = "ERROR_MESSAGE";
+    String MSG_ERR           = "SERVER_ERROR_MESSAGE";
+
+    int MSG_RET_SUCCESS = 0;
+    int MSG_RET_BAD_REQ = 400;
+    int MSG_RET_NOT_FOUND = 404;
+    int MSG_RET_SERVER_ERR = 500;
+
+    String OPERATION_FDN = "OPERATION";
+    String OPERATION_NOT_DEFINED = "NOT_DEFINED";
 
     Map<String, Class>  getMessageTypo();
 
