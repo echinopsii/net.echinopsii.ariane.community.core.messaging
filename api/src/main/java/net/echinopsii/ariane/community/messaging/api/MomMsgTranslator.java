@@ -33,6 +33,7 @@ public interface MomMsgTranslator<M> {
     String MSG_TIMESTAMP     = "MSG_TIMESTAMP";
     String MSG_TYPE          = "MSG_TYPE";
     String MSG_BODY          = "MSG_BODY";
+    String MSG_PROPERTIES    = "MSG_PROPERTIES";
 
     String MSG_RC            = "RC";
     String MSG_ERR           = "SERVER_ERROR_MESSAGE";
