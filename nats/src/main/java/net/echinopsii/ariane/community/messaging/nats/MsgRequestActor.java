@@ -50,6 +50,7 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
             Map<String, Object> finalMessage = ((MsgTranslator)super.getTranslator()).decode((Message)message);
             Map<String, Object> reply = super.getMsgWorker().apply(finalMessage);
             if (((Message)message).getReplyTo() != null && reply!=null) {
+                if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)!=null) reply.put(MsgTranslator.MSG_CORRELATION_ID, finalMessage.get(MsgTranslator.MSG_CORRELATION_ID));
                 if (super.getClient().getClientID()!=null)
                     reply.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
                 Message replyMessage = ((MsgTranslator) super.getTranslator()).encode(reply);
