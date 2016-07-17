@@ -1,7 +1,7 @@
 /**
- * Messaging - NATS Implementation
- * JSON tooling - PropertiesJSON
- * Copyright (C) 5/31/16 echinopsii
+ * Properties to JSON tooling
+ *
+ * Copyright (C) 14/01/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -71,7 +72,7 @@ public class PropertiesJSON {
             jgenerator.writeStartObject();
         for (String key : hobj.keySet()) {
             Object value = hobj.get(key);
-            log.debug("HashMap key {} value {}:{}", new Object[]{objectName, key, (String) value.toString()});
+            log.debug("HashMap key {} value {}:{}", new Object[]{objectName, key, value.toString()});
             if (value instanceof String) jgenerator.writeStringField(key, (String) value);
             else if (value instanceof Long) jgenerator.writeNumberField(key, (Long) value);
             else if (value instanceof Integer) jgenerator.writeNumberField(key, (Integer) value);
@@ -96,18 +97,16 @@ public class PropertiesJSON {
             for (Entry<String, Object> current : props.entrySet()) {
                 String objectName = current.getKey();
                 Object obj = current.getValue();
+                log.debug("Property {}", new Object[]{objectName});
                 if (obj!=null) {
-                    log.debug("Property {}", new Object[]{objectName});
                     if (obj instanceof String) jgenerator.writeStringField(objectName, (String) obj);
                     else if (obj instanceof Boolean) jgenerator.writeBooleanField(objectName, (Boolean) obj);
                     else if (obj instanceof Long) jgenerator.writeNumberField(objectName, (Long) obj);
                     else if (obj instanceof Integer) jgenerator.writeNumberField(objectName, (Integer) obj);
                     else if (obj instanceof Double) jgenerator.writeNumberField(objectName, (Double) obj);
                     else if (obj instanceof BigDecimal) jgenerator.writeNumberField(objectName, (BigDecimal) obj);
-                    else if (obj instanceof HashMap<?, ?>) {
-                        log.debug("Property {} value is an object", new Object[]{objectName});
-                        hashMapToJSON((HashMap<String, Object>) obj, objectName, jgenerator);
-                    } else if (obj instanceof ArrayList<?>) arrayListToJSON((ArrayList) obj, objectName, jgenerator);
+                    else if (obj instanceof HashMap<?, ?>) hashMapToJSON((HashMap<String, Object>) obj, objectName, jgenerator);
+                    else if (obj instanceof ArrayList<?>) arrayListToJSON((ArrayList) obj, objectName, jgenerator);
                     else if (obj instanceof String[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((String[]) obj)), objectName, jgenerator);
                     else if (obj instanceof Long[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Long[]) obj)), objectName, jgenerator);
                     else if (obj instanceof Integer[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Integer[]) obj)), objectName, jgenerator);
@@ -123,7 +122,8 @@ public class PropertiesJSON {
 
 
 
-    private static HashMap<String, Object> JSONStringMapToPropertyObject(JsonNode rootTree) throws PropertiesException {
+
+    private static HashMap<String, Object> JSONStringMapToPropertyObject(JsonNode rootTree, String json) throws PropertiesException {
         HashMap<String, Object> ret = null;
         if (rootTree.isObject()) {
             ObjectNode objectNode = (ObjectNode) rootTree;
@@ -161,24 +161,34 @@ public class PropertiesJSON {
                                 ret.put(objectFieldName, value);
                                 break;
                             case "map":
-                                HashMap<String, Object> valueHashMap = JSONStringMapToPropertyObject(subRootTree);
+                                HashMap<String, Object> valueHashMap = JSONStringMapToPropertyObject(subRootTree, json);
                                 ret.put(objectFieldName, valueHashMap);
                                 break;
                             case "array":
-                                ArrayList<?> valueArray = JSONStringArrayToPropertyObject(subRootTree);
+                                ArrayList<?> valueArray = JSONStringArrayToPropertyObject(subRootTree, json);
                                 ret.put(objectFieldName, valueArray);
                                 break;
                             default:
-                                throw new PropertiesException("Unsupported map entry type (" + vType.toLowerCase() + "). Supported types are : boolean, double, integer, long, string");
+                                throw new PropertiesException("Unsupported map entry type (" + vType.toLowerCase() + "). " +
+                                        "Supported types are : boolean, double, integer, long, string\n" +
+                                        "Provided JSON : " + json
+                                );
                         }
-                    } else  throw new PropertiesException("Json property map badly defined. Each map entry should be defined with following array : ['value type','value']");
-                } else throw new PropertiesException("Json property map badly defined. Each map entry should be defined with following array : ['value type','value']");
+                    } else throw new PropertiesException("Json property map badly defined. " +
+                            "Each map entry should be defined with following array : ['value type','value'].\n" +
+                            "Provided JSON : " + json
+                    );
+                } else throw new PropertiesException("Json property map badly defined. " +
+                        "Each map entry should be defined with following array : ['value type','value'].\n" +
+                        "Provided JSON : " + json);
             }
-        } else throw new PropertiesException("Json property badly defined : map should be defined as a Json object.");
+        } else throw new PropertiesException("Json property badly defined : map should be defined as a Json object.\n" +
+                "Provided JSON : " + json
+        );
         return ret;
     }
 
-    private static ArrayList<?> JSONStringArrayToPropertyObject(JsonNode rootTree) throws PropertiesException {
+    private static ArrayList<?> JSONStringArrayToPropertyObject(JsonNode rootTree, String json) throws PropertiesException {
         Object ret = null;
         if (rootTree.isArray()) {
             ArrayNode arrayNode = (ArrayNode) rootTree;
@@ -191,17 +201,20 @@ public class PropertiesJSON {
                         ArrayNode arrayValue = (ArrayNode) value;
                         Iterator<JsonNode> iter = arrayValue.elements();
                         switch(arrayTypeValue.toLowerCase()) {
+                            case "empty":
+                                ret = new ArrayList<>();
+                                break;
                             case "map":
                                 ret = new ArrayList<HashMap<String, Object>>();
                                 while (iter.hasNext()) {
-                                    HashMap<String, Object> valueHashMap = JSONStringMapToPropertyObject(iter.next());
+                                    HashMap<String, Object> valueHashMap = JSONStringMapToPropertyObject(iter.next(), json);
                                     ((ArrayList<HashMap<String, Object>>) ret).add(valueHashMap);
                                 }
                                 break;
                             case "array":
                                 ret = new ArrayList<ArrayList<?>>();
                                 while (iter.hasNext()) {
-                                    ArrayList<?> valueArray = JSONStringArrayToPropertyObject(iter.next());
+                                    ArrayList<?> valueArray = JSONStringArrayToPropertyObject(iter.next(), json);
                                     ((ArrayList<ArrayList<?>>) ret).add(valueArray);
                                 }
                                 break;
@@ -213,7 +226,9 @@ public class PropertiesJSON {
                                         ((ArrayList)ret).add(next.asBoolean());
                                     else
                                         throw new PropertiesException("Json property array badly defined. Following array value is not a boolean : " +next.toString() + ".\n" +
-                                                "Array entry should be defined with following array : ['array type',['value1','value2' ...]]");
+                                                                      "Array entry should be defined with following array : ['array type',['value1','value2' ...]].\n" +
+                                                                      "Provided JSON : " + json
+                                        );
                                 }
                                 break;
                             case "decimal":
@@ -224,7 +239,9 @@ public class PropertiesJSON {
                                         ((ArrayList)ret).add(next.decimalValue());
                                     else
                                         throw new PropertiesException("Json property array badly defined. Following array value is not a BigDecimal : " +next.toString() + ".\n" +
-                                                "Array entry should be defined with following array : ['array type',['value1','value2' ...]]");
+                                                                      "Array entry should be defined with following array : ['array type',['value1','value2' ...]].\n" +
+                                                                      "Provided JSON : " + json
+                                        );
                                 }
                                 break;
                             case "double":
@@ -235,7 +252,9 @@ public class PropertiesJSON {
                                         ((ArrayList)ret).add(next.asDouble());
                                     else
                                         throw new PropertiesException("Json property array badly defined. Following array value is not a double : " +next.toString() + ".\n" +
-                                                "Array entry should be defined with following array : ['array type',['value1','value2' ...]]");
+                                                                      "Array entry should be defined with following array : ['array type',['value1','value2' ...]].\n" +
+                                                                      "Provided JSON : " + json
+                                        );
                                 }
                                 break;
                             case "int":
@@ -245,9 +264,13 @@ public class PropertiesJSON {
                                     JsonNode next = iter.next();
                                     if (next.isInt())
                                         ((ArrayList)ret).add(next.asInt());
+                                    else if (next.isBigInteger())
+                                        ((ArrayList)ret).add(next.asInt());
                                     else
                                         throw new PropertiesException("Json property array badly defined. Following array value is not an integer : " +next.toString() + ".\n" +
-                                                "Array entry should be defined with following array : ['array type',['value1','value2' ...]]");
+                                                                      "Array entry should be defined with following array : ['array type',['value1','value2' ...]].\n" +
+                                                                      "Provided JSON : " + json
+                                        );
                                 }
                                 break;
                             case "long":
@@ -260,7 +283,33 @@ public class PropertiesJSON {
                                         ((ArrayList)ret).add((long)(next.asInt()));
                                     else
                                         throw new PropertiesException("Json property array badly defined. Following array value is not a long : " +next.toString() + ".\n" +
-                                                "Array entry should be defined with following array : ['array type',['value1','value2' ...]]");
+                                                                       "Array entry should be defined with following array : ['array type',['value1','value2' ...]].\n" +
+                                                                       "Provided JSON : " + json
+                                        );
+                                }
+                                break;
+                            case "object":
+                                ret = new ArrayList<Object>();
+                                while (iter.hasNext()) {
+                                    JsonNode next = iter.next();
+                                    if (next.isTextual())
+                                        ((ArrayList)ret).add(next.asText());
+                                    else if (next.isBigDecimal())
+                                        ((ArrayList)ret).add(next.decimalValue());
+                                    else if (next.isBigInteger())
+                                        ((ArrayList)ret).add(next.bigIntegerValue());
+                                    else if (next.isBoolean())
+                                        ((ArrayList)ret).add(next.booleanValue());
+                                    else if (next.isDouble())
+                                        ((ArrayList)ret).add(next.doubleValue());
+                                    else if (next.isInt())
+                                        ((ArrayList)ret).add(next.intValue());
+                                    else if (next.isLong())
+                                        ((ArrayList)ret).add(next.longValue());
+                                    else if (next.isNumber())
+                                        ((ArrayList)ret).add(next.numberValue());
+                                    else if (next.isNull())
+                                        ((ArrayList)ret).add(null);
                                 }
                                 break;
                             case "string":
@@ -271,16 +320,30 @@ public class PropertiesJSON {
                                         ((ArrayList)ret).add(next.asText());
                                     else
                                         throw new PropertiesException("Json property array badly defined. Following array value is not textual : " +next.toString() + ".\n" +
-                                                "Array entry should be defined with following array : ['array type',['value1','value2' ...]]");
+                                                                      "Array entry should be defined with following array : ['array type',['value1','value2' ...]].\n" +
+                                                                      "Provided JSON : " + json
+                                        );
                                 }
                                 break;
                             default:
-                                throw new PropertiesException("Unsupported array type (" + arrayTypeValue.toLowerCase() + "). Supported types are : boolean, double, integer, long, string");
+                                throw new PropertiesException("Unsupported array type (" + arrayTypeValue.toLowerCase() + "). Supported types are : boolean, double, integer, long, string.\n" +
+                                                              "Provided JSON : " + json);
                         }
-                    } else throw new PropertiesException("Json property array badly defined. Array value is not an array.\nArray entry should be defined with following array : ['array type',['value1','value2' ...]]");
-                } else throw new PropertiesException("Json property array badly defined. Array type is not textual.\nArray entry should be defined with following array : ['array type',['value1','value2' ...]]");
-            } else throw new PropertiesException("Json property array badly defined. Array entry should be defined with following array : ['array type',['value1','value2' ...]]");
-        } else throw new PropertiesException("Json property badly defined : array should be defined as a Json array.");
+                    } else throw new PropertiesException("Json property array badly defined. Array value is not an array.\n" +
+                            "Array entry should be defined with following array : ['array type',['value1','value2' ...]].\n" +
+                            "Provided JSON : " + json
+                    );
+                } else throw new PropertiesException("Json property array badly defined. Array type is not textual.\n" +
+                        "Array entry should be defined with following array : ['array type',['value1','value2' ...]].\n" +
+                        "Provided JSON : " + json
+                );
+            } else throw new PropertiesException("Json property array badly defined.\n" +
+                    "Array entry should be defined with following array : ['array type',['value1','value2' ...]].\n" +
+                    "Provided JSON : " + json
+            );
+        } else throw new PropertiesException("Json property badly defined : array should be defined as a Json array.\n" +
+                "Provided JSON : " + json
+        );
         return (ArrayList<?>) ret;
     }
 
@@ -291,8 +354,8 @@ public class PropertiesJSON {
         JsonParser jp = factory.createJsonParser(json);
         JsonNode rootTree = mapper.readTree(jp);
 
-        if (type.toLowerCase().equals("map")) ret = JSONStringMapToPropertyObject(rootTree);
-        else if (type.toLowerCase().equals("array")) ret = JSONStringArrayToPropertyObject(rootTree);
+        if (type.toLowerCase().equals("map")) ret = JSONStringMapToPropertyObject(rootTree, json);
+        else if (type.toLowerCase().equals("array")) ret = JSONStringArrayToPropertyObject(rootTree, json);
         else throw new PropertiesException("Unsupported json type (" + type + "). Supported types are : array, map");
 
         return ret;
@@ -302,7 +365,7 @@ public class PropertiesJSON {
 
 
 
-    private static String getTypeFromObject(Object object) {
+    public static String getTypeFromObject(Object object) throws PropertiesException {
         String type = null;
         if (object instanceof String) type = "string";
         else if (object instanceof Long) type = "long";
@@ -318,10 +381,11 @@ public class PropertiesJSON {
         else if (object instanceof Double[]) type = "array";
         else if (object instanceof BigDecimal[]) type = "array";
         else if (object instanceof Boolean[]) type = "array";
+        else throw new PropertiesException("Type " + object.getClass().getName() + " not supported !");
         return type;
     }
 
-    private static void valueToJSON(Object value,  JsonGenerator jgenerator) throws IOException {
+    private static void valueToJSON(Object value,  JsonGenerator jgenerator) throws IOException, PropertiesException {
         if (value instanceof String) jgenerator.writeString((String) value);
         else if (value instanceof Long) jgenerator.writeNumber((Long) value);
         else if (value instanceof Integer) jgenerator.writeNumber((Integer) value);
@@ -335,10 +399,10 @@ public class PropertiesJSON {
         else if (value instanceof Double[]) arrayListToTypedArrayJSON(new ArrayList<Object>(Arrays.asList((Double[]) value)), "double", jgenerator);
         else if (value instanceof BigDecimal[]) arrayListToTypedArrayJSON(new ArrayList<Object>(Arrays.asList((BigDecimal[]) value)), "decimal", jgenerator);
         else if (value instanceof Boolean[]) arrayListToTypedArrayJSON(new ArrayList<Object>(Arrays.asList((Boolean[]) value)), "boolean", jgenerator);
-        else if (value instanceof ArrayList) arrayListToTypedArrayJSON((ArrayList<Object>) value, null, jgenerator);
+        else if (value instanceof ArrayList) arrayListToTypedArrayJSON((ArrayList<Object>) value, "object", jgenerator);
     }
 
-    private static void hashMapToTypedHashMapJSON(HashMap<String, Object> mobj, JsonGenerator jgenerator) throws IOException {
+    private static void hashMapToTypedHashMapJSON(HashMap<String, Object> mobj, JsonGenerator jgenerator) throws IOException, PropertiesException {
         jgenerator.writeStartObject();
         for (String key : mobj.keySet()) {
             Object val = mobj.get(key);
@@ -351,7 +415,7 @@ public class PropertiesJSON {
         jgenerator.writeEndObject();
     }
 
-    private static String hashMapToTypedHashMapJSONString(HashMap<String, Object> mobj) throws IOException {
+    private static String hashMapToTypedHashMapJSONString(HashMap<String, Object> mobj) throws IOException, PropertiesException {
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
         JsonGenerator jgenerator = ToolBox.jFactory.createJsonGenerator(outStream, JsonEncoding.UTF8);
         hashMapToTypedHashMapJSON(mobj, jgenerator);
@@ -359,20 +423,38 @@ public class PropertiesJSON {
         return ToolBox.getOuputStreamContent(outStream, "UTF-8");
     }
 
-    private static void arrayListToTypedArrayJSON(ArrayList<Object> aobj, String type, JsonGenerator jgenerator) throws IOException {
+    private static void arrayListToTypedArrayJSON(ArrayList<Object> aobj, String type, JsonGenerator jgenerator) throws IOException, PropertiesException {
         jgenerator.writeStartArray();
-        if (type==null) {
-            Object item = (aobj.size()>0) ? aobj.get(0) : null;
-            if (item!=null) type = getTypeFromObject(item);
+        if (aobj.size()!=0) {
+            if (type.equals("object")) {
+                boolean keepObjectType = false;
+                String itemType = null;
+                for(Object item : aobj) {
+                    if (item != null) {
+                        if (itemType==null)
+                            itemType = getTypeFromObject(item);
+                        else
+                            if (!getTypeFromObject(item).equals(itemType)) {
+                                keepObjectType = true;
+                                break;
+                            }
+                    }
+                }
+                if (!keepObjectType) type = itemType;
+            }
+            if (type != null) jgenerator.writeString(type);
+            jgenerator.writeStartArray();
+            for (Object value : aobj) valueToJSON(value, jgenerator);
+            jgenerator.writeEndArray();
+        } else {
+            jgenerator.writeString("empty");
+            jgenerator.writeStartArray();
+            jgenerator.writeEndArray();
         }
-        if (type!=null) jgenerator.writeString(type);
-        jgenerator.writeStartArray();
-        for (Object value : aobj) valueToJSON(value, jgenerator);
-        jgenerator.writeEndArray();
         jgenerator.writeEndArray();
     }
 
-    private static String arrayListToTypedArrayJSONString(ArrayList<Object> aobj, String type) throws IOException {
+    private static String arrayListToTypedArrayJSONString(ArrayList<Object> aobj, String type) throws IOException, PropertiesException {
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
         JsonGenerator jgenerator = ToolBox.jFactory.createJsonGenerator(outStream, JsonEncoding.UTF8);
         arrayListToTypedArrayJSON(aobj, type, jgenerator);
@@ -380,34 +462,37 @@ public class PropertiesJSON {
         return ToolBox.getOuputStreamContent(outStream, "UTF-8");
     }
 
+    public static TypedPropertyField propertyFieldToTypedPropertyField(String name, Object obj) throws IOException, PropertiesException {
+        TypedPropertyField typedPropertyField = null;
+        if (obj instanceof String) typedPropertyField = new TypedPropertyField(name, "string", obj.toString());
+        else if (obj instanceof Boolean)  typedPropertyField = new TypedPropertyField(name, "boolean", obj.toString());
+        else if (obj instanceof Long) typedPropertyField = new TypedPropertyField(name, "long", obj.toString());
+        else if (obj instanceof Integer) typedPropertyField = new TypedPropertyField(name, "int", obj.toString());
+        else if (obj instanceof Double) typedPropertyField = new TypedPropertyField(name, "double", obj.toString());
+        else if (obj instanceof BigDecimal) typedPropertyField = new TypedPropertyField(name, "decimal", obj.toString());
+        else if (obj instanceof Map<?, ?>) typedPropertyField = new TypedPropertyField(name, "map", hashMapToTypedHashMapJSONString((HashMap) obj));
+        else if (obj instanceof List<?>) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "object"));
+        else if (obj instanceof String[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "string"));
+        else if (obj instanceof Long[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "long"));
+        else if (obj instanceof Integer[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "int"));
+        else if (obj instanceof Double[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "double"));
+        else if (obj instanceof BigDecimal[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "decimal"));
+        else if (obj instanceof Boolean[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "boolean"));
+        else log.error("Property {} type is not managed...", new Object[]{name});
+        return typedPropertyField;
+    }
 
-    public static List<TypedPropertyField> propertiesToTypedPropertiesList(Map<String, Object> props) throws IOException {
+    public static List<TypedPropertyField> propertiesToTypedPropertiesList(Map<String, Object> props) throws IOException, PropertiesException {
         List<TypedPropertyField> list = new ArrayList<>();
         for (String key : props.keySet()) {
             Object obj = props.get(key);
             if (obj!=null) {
-                TypedPropertyField typedPropertyField = null;
-                if (obj instanceof String) typedPropertyField = new TypedPropertyField(key, "string", obj.toString());
-                else if (obj instanceof Boolean)  typedPropertyField = new TypedPropertyField(key, "boolean", obj.toString());
-                else if (obj instanceof Long) typedPropertyField = new TypedPropertyField(key, "long", obj.toString());
-                else if (obj instanceof Integer) typedPropertyField = new TypedPropertyField(key, "int", obj.toString());
-                else if (obj instanceof Double) typedPropertyField = new TypedPropertyField(key, "double", obj.toString());
-                else if (obj instanceof BigDecimal) typedPropertyField = new TypedPropertyField(key, "decimal", obj.toString());
-                else if (obj instanceof Map<?, ?>) typedPropertyField = new TypedPropertyField(key, "map", hashMapToTypedHashMapJSONString((HashMap) obj));
-                else if (obj instanceof List<?>) typedPropertyField = new TypedPropertyField(key, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, null));
-                else if (obj instanceof String[]) typedPropertyField = new TypedPropertyField(key, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "string"));
-                else if (obj instanceof Long[]) typedPropertyField = new TypedPropertyField(key, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "long"));
-                else if (obj instanceof Integer[]) typedPropertyField = new TypedPropertyField(key, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "int"));
-                else if (obj instanceof Double[]) typedPropertyField = new TypedPropertyField(key, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "double"));
-                else if (obj instanceof BigDecimal[]) typedPropertyField = new TypedPropertyField(key, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "decimal"));
-                else if (obj instanceof Boolean[]) typedPropertyField = new TypedPropertyField(key, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "boolean"));
-                else log.error("Property {} type is not managed...", new Object[]{key});
+                TypedPropertyField typedPropertyField = propertyFieldToTypedPropertyField(key, obj);
                 if (typedPropertyField!=null) list.add(typedPropertyField);
             } else log.error("Property {} value is null...", new Object[]{key});
         }
         return list;
     }
-
 
 
 
@@ -465,5 +550,48 @@ public class PropertiesJSON {
             jgenerator.close();
             return ToolBox.getOuputStreamContent(outStream, "UTF-8");
         }
+    }
+
+    public static TypedPropertyField typedPropertyFieldFromJSON(String payload) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.readValue(payload, TypedPropertyField.class);
+        } catch (JsonMappingException exception) {
+            log.error("Deserialization error with payload : " + payload);
+            throw exception;
+        }
+    }
+
+    public static Object getValueFromTypedPropertyField(TypedPropertyField typedPropertyField) throws IOException, PropertiesException {
+        Object value;
+        switch (typedPropertyField.getPropertyType()) {
+            case "string":
+                value = typedPropertyField.getPropertyValue();
+                break;
+            case "int":
+            case "integer":
+                value = new Integer(typedPropertyField.getPropertyValue());
+                break;
+            case "long":
+                value = new Long(typedPropertyField.getPropertyValue());
+                break;
+            case "double":
+                value = new Double(typedPropertyField.getPropertyValue());
+                break;
+            case "decimal":
+                value = new BigDecimal(typedPropertyField.getPropertyValue());
+                break;
+            case "boolean":
+                value = new Boolean(typedPropertyField.getPropertyValue());
+                break;
+            case "array":
+            case "map":
+                value = PropertiesJSON.JSONStringToPropertyObject(typedPropertyField.getPropertyType(), typedPropertyField.getPropertyValue());
+                break;
+            default:
+                throw new PropertiesException("Unsupported json type (" + typedPropertyField.getPropertyType() + "). " +
+                        "Supported types are : array, boolean, decimal, double, integer, long, map");
+        }
+        return value;
     }
 }

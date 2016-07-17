@@ -60,7 +60,7 @@ public class MsgTranslator implements MomMsgTranslator<Message> {
             this.body = body;
         }
 
-        public byte[] toBSON() throws IOException {
+        public byte[] toBSON() throws IOException, PropertiesException {
             ByteArrayOutputStream outStream = new ByteArrayOutputStream();
             JsonGenerator jgenerator = ToolBox.jFactory.createJsonGenerator(outStream, JsonEncoding.UTF8);
             jgenerator.writeStartObject();
@@ -145,6 +145,8 @@ public class MsgTranslator implements MomMsgTranslator<Message> {
         try {
             data = extendedNATSMessage.toBSON();
         } catch (IOException e) {
+            e.printStackTrace();
+        } catch (PropertiesException e) {
             e.printStackTrace();
         }
         if (data!=null) ret.setData(data);

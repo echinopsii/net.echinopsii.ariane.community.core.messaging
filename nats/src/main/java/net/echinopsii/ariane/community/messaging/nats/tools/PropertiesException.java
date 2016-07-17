@@ -1,7 +1,7 @@
 /**
- * Messaging - NATS Implementation
- * JSON tooling - PropertiesExcepion
- * Copyright (C) 5/31/16 echinopsii
+ * Properties Serialization Exception
+ *
+ * Copyright (C) 2014  Mathilde Ffrench
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
