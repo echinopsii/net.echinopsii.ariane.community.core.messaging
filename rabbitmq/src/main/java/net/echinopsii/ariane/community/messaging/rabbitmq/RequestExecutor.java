@@ -27,9 +27,7 @@ import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecutor;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
 
@@ -38,7 +36,14 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     private static final String FAF_EXCHANGE = "FAF";
     private static final String RPC_EXCHANGE = "RPC";
 
+    private static boolean is_rpc_exchange_declared = false;
+    private static boolean is_faf_exchange_declared = false;
+
     private Channel channel;
+    private List<String> rpcEchangeBindedDestinations = new ArrayList<>();
+    private List<String> fafEchangeBindedDestinations = new ArrayList<>();
+    private Map<String, List<String>> sessionRPCQueues = new HashMap<>();
+    private Map<String, Object> consumers = new HashMap<String, Object>();
 
     public RequestExecutor(Client client) throws IOException {
         super(client);
@@ -51,9 +56,15 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             String groupID = super.getMomClient().getCurrentMsgGroup();
             if (groupID!=null) destination = groupID + "-" + destination;
 
-            channel.exchangeDeclare(FAF_EXCHANGE, EXCHANGE_TYPE_DIRECT);
-            channel.queueDeclare(destination, false, false, false, null);
-            channel.queueBind(destination, FAF_EXCHANGE, destination);
+            if (!is_faf_exchange_declared) {
+                channel.exchangeDeclare(FAF_EXCHANGE, EXCHANGE_TYPE_DIRECT);
+                is_faf_exchange_declared = true;
+            }
+            if (!fafEchangeBindedDestinations.contains(destination)) {
+                channel.queueDeclare(destination, false, false, true, null);
+                channel.queueBind(destination, FAF_EXCHANGE, destination);
+                fafEchangeBindedDestinations.add(destination);
+            }
 
             Message message = new MsgTranslator().encode(request);
             if (super.getMomClient().getClientID()!=null)
@@ -70,26 +81,35 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         Map<String, Object> response = null;
         try {
             String groupID = super.getMomClient().getCurrentMsgGroup();
-            if (groupID!=null) destination = groupID + "-" + destination;
+            if (groupID!=null) {
+                destination = groupID + "-" + destination;
+                replySource = destination + "-RET";
+                if (this.sessionRPCQueues.get(groupID)==null)
+                    this.sessionRPCQueues.put(groupID, new ArrayList<String>());
+                this.sessionRPCQueues.get(groupID).add(replySource);
+            }
 
-            channel.exchangeDeclare(RPC_EXCHANGE, EXCHANGE_TYPE_DIRECT);
-            channel.queueDeclare(destination, false, false, false, null);
-            channel.queueBind(destination, RPC_EXCHANGE, destination);
+            if (!is_rpc_exchange_declared) {
+                channel.exchangeDeclare(RPC_EXCHANGE, EXCHANGE_TYPE_DIRECT);
+                is_rpc_exchange_declared = true;
+            }
+            if (!rpcEchangeBindedDestinations.contains(destination)) {
+                channel.queueDeclare(destination, false, false, true, null);
+                channel.queueBind(destination, RPC_EXCHANGE, destination);
+                rpcEchangeBindedDestinations.add(destination);
+            }
 
             String replyQueueName;
-            if (replySource==null) {
-                replyQueueName = channel.queueDeclare().getQueue();
-            } else {
-                replyQueueName = replySource;
-                channel.queueDeclare(replyQueueName, false, true, false, null);
-            }
+            if (replySource==null) replyQueueName = channel.queueDeclare().getQueue();
+            else replyQueueName = replySource;
+
             QueueingConsumer consumer = null;
-            if (super.getConsumers().get(replyQueueName)!=null) {
-                consumer = (QueueingConsumer)super.getConsumers().get(replyQueueName);
-            } else {
+            if (consumers.get(replyQueueName)!=null) consumer = (QueueingConsumer)consumers.get(replyQueueName);
+            else {
+                if (replySource!=null) channel.queueDeclare(replyQueueName, false, true, true, null);
                 consumer = new QueueingConsumer(channel);
                 channel.basicConsume(replyQueueName, true, consumer);
-                super.getConsumers().put(replyQueueName, consumer);
+                consumers.put(replyQueueName, consumer);
             }
 
             String corrId = UUID.randomUUID().toString();
@@ -109,6 +129,10 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                         response = new MsgTranslator().decode(new Message().setEnvelope(delivery.getEnvelope()).
                                                                             setProperties(delivery.getProperties()).
                                                                             setBody(delivery.getBody()));
+                        if (replySource==null) {
+                            channel.queueDelete(replyQueueName);
+                            consumers.remove(replyQueueName);
+                        }
                         break;
                     }
                 } catch (InterruptedException e) {
@@ -126,8 +150,23 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         return response;
     }
 
+    public void cleanGroupReqResources(String groupID) {
+        if (this.sessionRPCQueues.get(groupID)!=null) {
+            for (String queue : this.sessionRPCQueues.get(groupID)) {
+                try {
+                    channel.queueDelete(queue);
+                    consumers.remove(queue);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
     public void stop() throws IOException {
-        super.stop();
+        consumers.clear();
+        rpcEchangeBindedDestinations.clear();
+        fafEchangeBindedDestinations.clear();
         channel.close();
     }
 }

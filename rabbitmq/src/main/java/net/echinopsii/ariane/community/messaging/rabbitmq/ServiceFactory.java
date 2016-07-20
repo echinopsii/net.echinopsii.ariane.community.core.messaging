@@ -49,7 +49,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             @Override
             public void run() {
                 try {
-                    channel.queueDeclare(source, false, false, false, null);
+                    channel.queueDeclare(source, false, false, true, null);
 
                     QueueingConsumer consumer = new QueueingConsumer(channel);
                     channel.basicConsume(source, false, consumer);
