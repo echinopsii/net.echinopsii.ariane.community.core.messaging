@@ -101,7 +101,6 @@ public abstract class MomAkkaAbsClient implements MomClient {
 
     @Override
     public void openMsgGroupService(String groupID) {
-
         if (this.getServiceFactory()!=null)
             for (MomService service : ((MomAkkaAbsServiceFactory)this.getServiceFactory()).getServices())
                 if (service.getMsgGroupSubServiceMgr()!=null) service.getMsgGroupSubServiceMgr().openMsgGroupSubService(groupID);

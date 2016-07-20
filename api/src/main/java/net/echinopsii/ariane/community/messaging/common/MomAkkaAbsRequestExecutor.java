@@ -30,22 +30,13 @@ import java.util.Map;
 public abstract class MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
 
     private MomClient momClient;
-    private Map<String, Object> consumers = new HashMap<String, Object>();
 
     public MomAkkaAbsRequestExecutor(MomClient client) throws IOException {
         momClient = client;
     }
 
-    public void stop() throws IOException {
-        consumers.clear();
-    }
-
     public MomClient getMomClient() {
         return momClient;
-    }
-
-    public Map<String, Object> getConsumers() {
-        return consumers;
     }
 
     @Override
