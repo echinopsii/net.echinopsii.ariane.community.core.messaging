@@ -21,14 +21,18 @@ package net.echinopsii.ariane.community.messaging.nats;
 
 import io.nats.client.Connection;
 import io.nats.client.Message;
+import io.nats.client.SyncSubscription;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecutor;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
+
+    private HashMap<String, HashMap<String, SyncSubscription>> sessionsRPCSubs = new HashMap<>();
 
     public RequestExecutor(Client client) throws IOException {
         super(client);
@@ -51,14 +55,44 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     @Override
     public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) {
         Map<String, Object> response = null;
-        String groupID = super.getMomClient().getCurrentMsgGroup();
-        if (groupID!=null) destination = groupID + "-" + destination;
         Message message = new MsgTranslator().encode(request);
+
+        String groupID = super.getMomClient().getCurrentMsgGroup();
+        if (groupID!=null) {
+            destination = groupID + "-" + destination;
+            if (replySource==null) replySource = destination + "-RET";
+        }
+
         message.setSubject(destination);
+        if (replySource!=null) message.setReplyTo(replySource);
+
         try {
-            Message msgResponse = ((Connection)super.getMomClient().getConnection()).request(
-                    message.getSubject(), message.getData()
-            );
+            Message msgResponse = null;
+            if (replySource==null) {
+                msgResponse = ((Connection) super.getMomClient().getConnection()).request(
+                        message.getSubject(), message.getData()
+                );
+            } else {
+                SyncSubscription subs;
+                if (groupID!=null) {
+                    if (sessionsRPCSubs.get(groupID) != null) {
+                        if (sessionsRPCSubs.get(groupID).get(replySource) != null) subs = sessionsRPCSubs.get(groupID).get(replySource);
+                        else {
+                            subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(replySource);
+                            sessionsRPCSubs.get(groupID).put(replySource, subs);
+                        }
+                    } else {
+                        HashMap<String, SyncSubscription> groupSubs = new HashMap<>();
+                        subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(replySource);
+                        groupSubs.put(replySource, subs);
+                        sessionsRPCSubs.put(groupID, groupSubs);
+                    }
+                } else subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(replySource);
+
+                ((Connection) super.getMomClient().getConnection()).publish(message);
+                msgResponse = subs.nextMessage();
+                if (groupID==null) subs.close();
+            }
             response = new MsgTranslator().decode(msgResponse);
         } catch (Exception e) {
             e.printStackTrace();
@@ -68,5 +102,18 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             response = answerCB.apply(response);
 
         return response;
+    }
+
+    public void cleanGroupReqResources(String groupID) {
+        if (this.sessionsRPCSubs.get(groupID)!=null) {
+            for (String replySource : this.sessionsRPCSubs.get(groupID).keySet())
+                this.sessionsRPCSubs.get(groupID).get(replySource).close();
+            this.sessionsRPCSubs.get(groupID).clear();
+            this.sessionsRPCSubs.remove(groupID);
+        }
+    }
+
+    public void stop() {
+
     }
 }

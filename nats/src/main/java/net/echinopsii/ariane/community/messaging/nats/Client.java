@@ -100,6 +100,13 @@ public class Client extends MomAkkaAbsClient implements MomClient {
         return ret;
     }
 
+    @Override
+    public void closeMsgGroupRequest(String groupID) {
+        for (MomRequestExecutor requestExecutor : super.getRequestExecutors())
+            ((RequestExecutor) requestExecutor).cleanGroupReqResources(groupID);
+        super.closeMsgGroupRequest(groupID);
+    }
+
     public ConnectionFactory getFactory() {
         return factory;
     }
