@@ -42,8 +42,8 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     private Channel channel;
     private List<String> rpcEchangeBindedDestinations = new ArrayList<>();
     private List<String> fafEchangeBindedDestinations = new ArrayList<>();
-    private Map<String, List<String>> sessionRPCQueues = new HashMap<>();
-    private Map<String, Object> consumers = new HashMap<String, Object>();
+    private Map<String, List<String>> sessionsRPCReplyQueues = new HashMap<>();
+    private Map<String, Object> replyConsumers = new HashMap<>();
 
     public RequestExecutor(Client client) throws IOException {
         super(client);
@@ -83,10 +83,10 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             String groupID = super.getMomClient().getCurrentMsgGroup();
             if (groupID!=null) {
                 destination = groupID + "-" + destination;
-                replySource = destination + "-RET";
-                if (this.sessionRPCQueues.get(groupID)==null)
-                    this.sessionRPCQueues.put(groupID, new ArrayList<String>());
-                this.sessionRPCQueues.get(groupID).add(replySource);
+                if (replySource==null) replySource = destination + "-RET";
+                if (this.sessionsRPCReplyQueues.get(groupID)==null)
+                    this.sessionsRPCReplyQueues.put(groupID, new ArrayList<String>());
+                this.sessionsRPCReplyQueues.get(groupID).add(replySource);
             }
 
             if (!is_rpc_exchange_declared) {
@@ -103,13 +103,13 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             if (replySource==null) replyQueueName = channel.queueDeclare().getQueue();
             else replyQueueName = replySource;
 
-            QueueingConsumer consumer = null;
-            if (consumers.get(replyQueueName)!=null) consumer = (QueueingConsumer)consumers.get(replyQueueName);
+            QueueingConsumer consumer;
+            if (replyConsumers.get(replyQueueName)!=null) consumer = (QueueingConsumer) replyConsumers.get(replyQueueName);
             else {
                 if (replySource!=null) channel.queueDeclare(replyQueueName, false, true, true, null);
                 consumer = new QueueingConsumer(channel);
                 channel.basicConsume(replyQueueName, true, consumer);
-                consumers.put(replyQueueName, consumer);
+                replyConsumers.put(replyQueueName, consumer);
             }
 
             String corrId = UUID.randomUUID().toString();
@@ -122,16 +122,15 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             channel.basicPublish(RPC_EXCHANGE, destination, (com.rabbitmq.client.AMQP.BasicProperties) message.getProperties(), message.getBody());
 
             while (true) {
-                QueueingConsumer.Delivery delivery = null;
                 try {
-                    delivery = consumer.nextDelivery();
+                    QueueingConsumer.Delivery delivery = consumer.nextDelivery();
                     if (delivery.getProperties().getCorrelationId().equals(corrId)) {
                         response = new MsgTranslator().decode(new Message().setEnvelope(delivery.getEnvelope()).
                                                                             setProperties(delivery.getProperties()).
                                                                             setBody(delivery.getBody()));
                         if (replySource==null) {
                             channel.queueDelete(replyQueueName);
-                            consumers.remove(replyQueueName);
+                            replyConsumers.remove(replyQueueName);
                         }
                         break;
                     }
@@ -151,11 +150,11 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     }
 
     public void cleanGroupReqResources(String groupID) {
-        if (this.sessionRPCQueues.get(groupID)!=null) {
-            for (String queue : this.sessionRPCQueues.get(groupID)) {
+        if (this.sessionsRPCReplyQueues.get(groupID)!=null) {
+            for (String queue : this.sessionsRPCReplyQueues.get(groupID)) {
                 try {
                     channel.queueDelete(queue);
-                    consumers.remove(queue);
+                    replyConsumers.remove(queue);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -164,7 +163,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     }
 
     public void stop() throws IOException {
-        consumers.clear();
+        replyConsumers.clear();
         rpcEchangeBindedDestinations.clear();
         fafEchangeBindedDestinations.clear();
         channel.close();
