@@ -65,9 +65,11 @@ public class ToolBox {
             case "string":
                 ovalue = value;
                 break;
+            case "null":
+                break;
             default:
                 throw new PropertiesException("Invalid property type ("+type.toLowerCase()+"). Supported property types are : " +
-                        "array, boolean, decimal, double, int, long, map and String");
+                        "array, boolean, decimal, double, int, long, map, null and string");
         }
         return ovalue;
     }

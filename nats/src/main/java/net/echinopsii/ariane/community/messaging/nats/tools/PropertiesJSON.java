@@ -19,10 +19,7 @@
 
 package net.echinopsii.ariane.community.messaging.nats.tools;
 
-import com.fasterxml.jackson.core.JsonEncoding;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,7 +30,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.ParameterizedType;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -47,20 +46,22 @@ public class PropertiesJSON {
         else
             jgenerator.writeStartArray();
         for (Object value : aobj) {
-            if (value instanceof String) jgenerator.writeString((String) value);
-            else if (value instanceof Long) jgenerator.writeNumber((Long) value);
-            else if (value instanceof Integer) jgenerator.writeNumber((Integer) value);
-            else if (value instanceof Double) jgenerator.writeNumber((Double) value);
-            else if (value instanceof BigDecimal) jgenerator.writeNumber((BigDecimal) value);
-            else if (value instanceof Boolean) jgenerator.writeBoolean((Boolean) value);
-            else if (value instanceof ArrayList) arrayListToJSON((ArrayList<Object>) value, null, jgenerator);
-            else if (value instanceof String[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((String[]) value)), objectName, jgenerator);
-            else if (value instanceof Long[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Long[]) value)), objectName, jgenerator);
-            else if (value instanceof Integer[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Integer[]) value)), objectName, jgenerator);
-            else if (value instanceof Double[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Double[]) value)), objectName, jgenerator);
-            else if (value instanceof BigDecimal[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((BigDecimal[]) value)), objectName, jgenerator);
-            else if (value instanceof Boolean[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Boolean[]) value)), objectName, jgenerator);
-            else if (value instanceof HashMap) hashMapToJSON((HashMap) value, null, jgenerator);
+            if (value != null) {
+                if (value instanceof String) jgenerator.writeString((String) value);
+                else if (value instanceof Long) jgenerator.writeNumber((Long) value);
+                else if (value instanceof Integer) jgenerator.writeNumber((Integer) value);
+                else if (value instanceof Double) jgenerator.writeNumber((Double) value);
+                else if (value instanceof BigDecimal) jgenerator.writeNumber((BigDecimal) value);
+                else if (value instanceof Boolean) jgenerator.writeBoolean((Boolean) value);
+                else if (value instanceof ArrayList) arrayListToJSON((ArrayList<Object>) value, null, jgenerator);
+                else if (value instanceof String[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((String[]) value)), objectName, jgenerator);
+                else if (value instanceof Long[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Long[]) value)), objectName, jgenerator);
+                else if (value instanceof Integer[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Integer[]) value)), objectName, jgenerator);
+                else if (value instanceof Double[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Double[]) value)), objectName, jgenerator);
+                else if (value instanceof BigDecimal[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((BigDecimal[]) value)), objectName, jgenerator);
+                else if (value instanceof Boolean[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Boolean[]) value)), objectName, jgenerator);
+                else if (value instanceof HashMap) hashMapToJSON((HashMap) value, null, jgenerator);
+            } else jgenerator.writeNull();
         }
         jgenerator.writeEndArray();
     }
@@ -72,21 +73,23 @@ public class PropertiesJSON {
             jgenerator.writeStartObject();
         for (String key : hobj.keySet()) {
             Object value = hobj.get(key);
-            log.debug("HashMap key {} value {}:{}", new Object[]{objectName, key, value.toString()});
-            if (value instanceof String) jgenerator.writeStringField(key, (String) value);
-            else if (value instanceof Long) jgenerator.writeNumberField(key, (Long) value);
-            else if (value instanceof Integer) jgenerator.writeNumberField(key, (Integer) value);
-            else if (value instanceof Double) jgenerator.writeNumberField(key, (Double) value);
-            else if (value instanceof BigDecimal) jgenerator.writeNumberField(key, (BigDecimal) value);
-            else if (value instanceof Boolean) jgenerator.writeBooleanField(key, (Boolean) value);
-            else if (value instanceof HashMap) hashMapToJSON((HashMap) value, key, jgenerator);
-            else if (value instanceof ArrayList) arrayListToJSON((ArrayList) value, key, jgenerator);
-            else if (value instanceof String[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((String[]) value)), objectName, jgenerator);
-            else if (value instanceof Long[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Long[]) value)), objectName, jgenerator);
-            else if (value instanceof Integer[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Integer[]) value)), objectName, jgenerator);
-            else if (value instanceof Double[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Double[]) value)), objectName, jgenerator);
-            else if (value instanceof BigDecimal[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((BigDecimal[]) value)), objectName, jgenerator);
-            else if (value instanceof Boolean[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Boolean[]) value)), objectName, jgenerator);
+            if (value != null) {
+                log.debug("HashMap key {} value {}:{}", new Object[]{objectName, key, value.toString()});
+                if (value instanceof String) jgenerator.writeStringField(key, (String) value);
+                else if (value instanceof Long) jgenerator.writeNumberField(key, (Long) value);
+                else if (value instanceof Integer) jgenerator.writeNumberField(key, (Integer) value);
+                else if (value instanceof Double) jgenerator.writeNumberField(key, (Double) value);
+                else if (value instanceof BigDecimal) jgenerator.writeNumberField(key, (BigDecimal) value);
+                else if (value instanceof Boolean) jgenerator.writeBooleanField(key, (Boolean) value);
+                else if (value instanceof HashMap) hashMapToJSON((HashMap) value, key, jgenerator);
+                else if (value instanceof ArrayList) arrayListToJSON((ArrayList) value, key, jgenerator);
+                else if (value instanceof String[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((String[]) value)), objectName, jgenerator);
+                else if (value instanceof Long[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Long[]) value)), objectName, jgenerator);
+                else if (value instanceof Integer[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Integer[]) value)), objectName, jgenerator);
+                else if (value instanceof Double[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Double[]) value)), objectName, jgenerator);
+                else if (value instanceof BigDecimal[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((BigDecimal[]) value)), objectName, jgenerator);
+                else if (value instanceof Boolean[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Boolean[]) value)), objectName, jgenerator);
+            } else jgenerator.writeNullField(key);
         }
         jgenerator.writeEndObject();
     }
@@ -114,7 +117,7 @@ public class PropertiesJSON {
                     else if (obj instanceof BigDecimal[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((BigDecimal[]) obj)), objectName, jgenerator);
                     else if (obj instanceof Boolean[]) arrayListToJSON(new ArrayList<Object>(Arrays.asList((Boolean[]) obj)), objectName, jgenerator);
                     else log.error("Property {} type is not managed...", new Object[]{objectName});
-                } else log.error("Property {} value is null...", new Object[]{objectName});
+                } else jgenerator.writeNullField(objectName);
             }
         }
     }
@@ -167,6 +170,9 @@ public class PropertiesJSON {
                             case "array":
                                 ArrayList<?> valueArray = JSONStringArrayToPropertyObject(subRootTree, json);
                                 ret.put(objectFieldName, valueArray);
+                                break;
+                            case "null":
+                                ret.put(objectFieldName, null);
                                 break;
                             default:
                                 throw new PropertiesException("Unsupported map entry type (" + vType.toLowerCase() + "). " +
@@ -325,6 +331,8 @@ public class PropertiesJSON {
                                         );
                                 }
                                 break;
+                            case "null":
+                                break;
                             default:
                                 throw new PropertiesException("Unsupported array type (" + arrayTypeValue.toLowerCase() + "). Supported types are : boolean, double, integer, long, string.\n" +
                                                               "Provided JSON : " + json);
@@ -367,21 +375,23 @@ public class PropertiesJSON {
 
     public static String getTypeFromObject(Object object) throws PropertiesException {
         String type = null;
-        if (object instanceof String) type = "string";
-        else if (object instanceof Long) type = "long";
-        else if (object instanceof Integer) type = "int";
-        else if (object instanceof Double) type = "double";
-        else if (object instanceof BigDecimal) type = "decimal";
-        else if (object instanceof Boolean) type = "boolean";
-        else if (object instanceof List) type = "array";
-        else if (object instanceof HashMap) type ="map";
-        else if (object instanceof String[]) type = "array";
-        else if (object instanceof Long[]) type = "array";
-        else if (object instanceof Integer[]) type = "array";
-        else if (object instanceof Double[]) type = "array";
-        else if (object instanceof BigDecimal[]) type = "array";
-        else if (object instanceof Boolean[]) type = "array";
-        else throw new PropertiesException("Type " + object.getClass().getName() + " not supported !");
+        if (object!=null) {
+            if (object instanceof String) type = "string";
+            else if (object instanceof Long) type = "long";
+            else if (object instanceof Integer) type = "int";
+            else if (object instanceof Double) type = "double";
+            else if (object instanceof BigDecimal) type = "decimal";
+            else if (object instanceof Boolean) type = "boolean";
+            else if (object instanceof List) type = "array";
+            else if (object instanceof HashMap) type = "map";
+            else if (object instanceof String[]) type = "array";
+            else if (object instanceof Long[]) type = "array";
+            else if (object instanceof Integer[]) type = "array";
+            else if (object instanceof Double[]) type = "array";
+            else if (object instanceof BigDecimal[]) type = "array";
+            else if (object instanceof Boolean[]) type = "array";
+            else throw new PropertiesException("Type " + object.getClass().getName() + " not supported !");
+        } else type = "null";
         return type;
     }
 
@@ -464,21 +474,23 @@ public class PropertiesJSON {
 
     public static TypedPropertyField propertyFieldToTypedPropertyField(String name, Object obj) throws IOException, PropertiesException {
         TypedPropertyField typedPropertyField = null;
-        if (obj instanceof String) typedPropertyField = new TypedPropertyField(name, "string", obj.toString());
-        else if (obj instanceof Boolean)  typedPropertyField = new TypedPropertyField(name, "boolean", obj.toString());
-        else if (obj instanceof Long) typedPropertyField = new TypedPropertyField(name, "long", obj.toString());
-        else if (obj instanceof Integer) typedPropertyField = new TypedPropertyField(name, "int", obj.toString());
-        else if (obj instanceof Double) typedPropertyField = new TypedPropertyField(name, "double", obj.toString());
-        else if (obj instanceof BigDecimal) typedPropertyField = new TypedPropertyField(name, "decimal", obj.toString());
-        else if (obj instanceof Map<?, ?>) typedPropertyField = new TypedPropertyField(name, "map", hashMapToTypedHashMapJSONString((HashMap) obj));
-        else if (obj instanceof List<?>) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "object"));
-        else if (obj instanceof String[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "string"));
-        else if (obj instanceof Long[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "long"));
-        else if (obj instanceof Integer[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "int"));
-        else if (obj instanceof Double[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "double"));
-        else if (obj instanceof BigDecimal[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "decimal"));
-        else if (obj instanceof Boolean[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString((ArrayList<Object>) obj, "boolean"));
-        else log.error("Property {} type is not managed...", new Object[]{name});
+        if (obj != null) {
+            if (obj instanceof String) typedPropertyField = new TypedPropertyField(name, "string", obj.toString());
+            else if (obj instanceof Boolean) typedPropertyField = new TypedPropertyField(name, "boolean", obj.toString());
+            else if (obj instanceof Long) typedPropertyField = new TypedPropertyField(name, "long", obj.toString());
+            else if (obj instanceof Integer) typedPropertyField = new TypedPropertyField(name, "int", obj.toString());
+            else if (obj instanceof Double) typedPropertyField = new TypedPropertyField(name, "double", obj.toString());
+            else if (obj instanceof BigDecimal) typedPropertyField = new TypedPropertyField(name, "decimal", obj.toString());
+            else if (obj instanceof Map<?, ?>) typedPropertyField = new TypedPropertyField(name, "map", hashMapToTypedHashMapJSONString(new HashMap<String, Object>((Map) obj)));
+            else if (obj instanceof List<?>) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString(new ArrayList<>((List)obj), "object"));
+            else if (obj instanceof String[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString(new ArrayList<Object>(Arrays.asList((String[])obj)), "string"));
+            else if (obj instanceof Long[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString(new ArrayList<Object>(Arrays.asList((Long[])obj)), "long"));
+            else if (obj instanceof Integer[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString(new ArrayList<Object>(Arrays.asList((Integer[])obj)), "int"));
+            else if (obj instanceof Double[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString(new ArrayList<Object>(Arrays.asList((Double[])obj)), "double"));
+            else if (obj instanceof BigDecimal[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString(new ArrayList<Object>(Arrays.asList((BigDecimal[])obj)), "decimal"));
+            else if (obj instanceof Boolean[]) typedPropertyField = new TypedPropertyField(name, "array", arrayListToTypedArrayJSONString(new ArrayList<Object>(Arrays.asList((Boolean[])obj)), "boolean"));
+            else log.error("Property {} type is not managed : {}...", new Object[]{name, obj.getClass().getName()});
+        } else typedPropertyField = new TypedPropertyField(name, "null", null);
         return typedPropertyField;
     }
 
@@ -587,6 +599,9 @@ public class PropertiesJSON {
             case "array":
             case "map":
                 value = PropertiesJSON.JSONStringToPropertyObject(typedPropertyField.getPropertyType(), typedPropertyField.getPropertyValue());
+                break;
+            case "null":
+                value = null;
                 break;
             default:
                 throw new PropertiesException("Unsupported json type (" + typedPropertyField.getPropertyType() + "). " +
