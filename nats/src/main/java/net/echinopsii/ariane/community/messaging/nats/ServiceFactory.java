@@ -117,7 +117,8 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
 
             @Override
             public void stop() {
-                for (String sessionID : sessionConsumersRegistry.keySet()) {
+                HashMap<String, MomConsumer> sessionConsumersRegistryClone = (HashMap<String, MomConsumer>) sessionConsumersRegistry.clone();
+                for (String sessionID : sessionConsumersRegistryClone.keySet()) {
                     sessionConsumersRegistry.get(sessionID).stop();
                     sessionConsumersRegistry.remove(sessionID);
                 }
