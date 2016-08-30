@@ -5,7 +5,7 @@
     <!-- General information -->
     <groupId>net.echinopsii.ariane.community</groupId>
     <artifactId>net.echinopsii.ariane.community.messaging</artifactId>
-    <version>0.2.1</version>
+    <version>0.2.2-SNAPSHOT</version>
     <name>Ariane Community Messaging Parent</name>
     <packaging>pom</packaging>
     
