@@ -1,5 +1,5 @@
 [
     "net/echinopsii/ariane/community/messaging/net.echinopsii.ariane.community.messaging.api/0.2.2-SNAPSHOT/net.echinopsii.ariane.community.messaging.api-0.2.2-SNAPSHOT.jar",
-    "net/echinopsii/ariane/community/messaging/net.echinopsii.ariane.community.messaging.rabbitmq/0.2.2-SNAPSHOT/net.echinopsii.ariane.community.messaging.rabbitmq-0.2.2-SNAPSHOT.jar",
-    "net/echinopsii/ariane/community/messaging/net.echinopsii.ariane.community.messaging.nats/0.2.2-SNAPSHOT/net.echinopsii.ariane.community.messaging.nats-0.2.2-SNAPSHOT.jar"
+    "net/echinopsii/ariane/community/messaging/net.echinopsii.ariane.community.messaging.nats/0.2.2-SNAPSHOT/net.echinopsii.ariane.community.messaging.nats-0.2.2-SNAPSHOT.jar",
+    "net/echinopsii/ariane/community/messaging/net.echinopsii.ariane.community.messaging.rabbitmq/0.2.2-SNAPSHOT/net.echinopsii.ariane.community.messaging.rabbitmq-0.2.2-SNAPSHOT.jar"
 ]
