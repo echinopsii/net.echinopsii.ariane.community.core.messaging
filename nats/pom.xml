@@ -25,7 +25,12 @@
             <groupId>io.nats</groupId>
             <!-- bundleized and compiled with Java 1.7 -->
             <artifactId>net.echinopsii.3rdparty.jnats</artifactId>
-            <version>0.4.1</version>
+            <version>0.7.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.7</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

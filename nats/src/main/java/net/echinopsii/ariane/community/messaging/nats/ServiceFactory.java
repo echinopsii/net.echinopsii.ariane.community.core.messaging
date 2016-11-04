@@ -62,18 +62,18 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                             if (msg!=null && isRunning) runnableReqActor.tell(msg, null);
                         } catch (TimeoutException e) {
                             log.debug("no message found during last 10 ms");
-                        } catch (IllegalStateException e) {
-                            if (isRunning) log.error(e.getMessage());
+                        } catch (IllegalStateException | IOException e) {
+                            if (isRunning) log.error("[source: " + source + "]" + e.getMessage());
                         }
                     }
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
                     if (!connection.isClosed() && subs!=null) {
                         try {
                             subs.unsubscribe();
                             subs.close();
-                        } catch (IOException e) {
+                        } catch (Exception e) {
                             e.printStackTrace();
                         }
                     }
@@ -87,7 +87,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
 
             @Override
             public void start() {
-                new Thread(this).start();
+                new Thread(this, source + "_consumer").start();
             }
 
             @Override
