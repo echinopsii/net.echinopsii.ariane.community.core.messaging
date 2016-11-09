@@ -25,17 +25,26 @@ import io.nats.client.SyncSubscription;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
+    private static final Logger log = LoggerFactory.getLogger(RequestExecutor.class);
 
     private HashMap<String, HashMap<String, SyncSubscription>> sessionsRPCSubs = new HashMap<>();
+    private long rpc_timeout = 0;
 
     public RequestExecutor(Client client) throws IOException {
         super(client);
+    }
+
+    public RequestExecutor(Client client, long rpc_timeout) throws IOException {
+        super(client);
+        this.rpc_timeout = rpc_timeout;
     }
 
     @Override
@@ -90,7 +99,16 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                 } else subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(replySource);
 
                 ((Connection) super.getMomClient().getConnection()).publish(message);
-                msgResponse = subs.nextMessage();
+                long exit_count = 1;
+                if (this.rpc_timeout > 0) exit_count = this.rpc_timeout * 100;
+                while(msgResponse==null && exit_count > 0) {
+                    try {
+                        msgResponse = subs.nextMessage(10);
+                        if (this.rpc_timeout > 0) exit_count--;
+                    } catch (InterruptedException ex) {
+                        log.debug("Thread interrupted... Replay");
+                    }
+                }
                 if (groupID==null) subs.close();
             }
             response = new MsgTranslator().decode(msgResponse);
