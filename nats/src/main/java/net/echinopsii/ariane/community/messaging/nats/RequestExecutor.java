@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
     private static final Logger log = LoggerFactory.getLogger(RequestExecutor.class);
@@ -105,7 +106,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                     try {
                         msgResponse = subs.nextMessage(10);
                         if (this.rpc_timeout > 0) exit_count--;
-                    } catch (InterruptedException ex) {
+                    } catch (InterruptedException | TimeoutException ex ) {
                         log.debug("Thread interrupted... Replay");
                     }
                 }
