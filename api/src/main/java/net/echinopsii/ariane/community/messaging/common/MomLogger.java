@@ -19,6 +19,7 @@
  */
 package net.echinopsii.ariane.community.messaging.common;
 
+import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
@@ -358,24 +359,18 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
 
     @Override
     public net.echinopsii.ariane.community.messaging.api.MomLogger setTraceLevel(boolean isTraceLevelEnabled) {
-        if (isTraceLevelEnabled && !itlEnabledPerThread.contains(Thread.currentThread().getId())) {
-            itlEnabledPerThread.add(Thread.currentThread().getId());
-            this.trace("MomLogger.setTraceLevel - isTraceLevelEnabled: true");
-            this.trace("MomLogger.setTraceLevel - itlEnabledPerThread: " + itlEnabledPerThread.toString());
-        } else if (!isTraceLevelEnabled){
-            this.trace("MomLogger.setTraceLevel - isTraceLevelEnabled: false");
-            this.trace("MomLogger.setTraceLevel - itlEnabledPerThread: " + itlEnabledPerThread.toString());
-            itlEnabledPerThread.remove(Thread.currentThread().getId());
-        }
+        if (isTraceLevelEnabled && !itlEnabledPerThread.contains(Thread.currentThread().getId())) itlEnabledPerThread.add(Thread.currentThread().getId());
+        else if (!isTraceLevelEnabled) itlEnabledPerThread.remove(Thread.currentThread().getId());
         return this;
     }
 
     @Override
     public void traceMessage(String opsName, Map<String, Object> message, String... ignoredFields) {
         Map<String, Object> tracedMessage = new HashMap<>(message);
+        tracedMessage.remove(MomMsgTranslator.MSG_BODY);
         for (String ignoredField : ignoredFields)
             tracedMessage.remove(ignoredField);
-        this.debug(opsName + " - " + tracedMessage.toString(), tracedMessage.toString());
+        this.trace(opsName + " - " + tracedMessage.toString());
     }
 
     public boolean isTraceLevelEnabled() {
