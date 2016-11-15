@@ -28,9 +28,5 @@ import java.util.Map;
 public interface MomLogger extends Serializable, Logger, LocationAwareLogger {
     MomLogger setTraceLevel(boolean isTraceLevelEnabled);
 
-    void traceMessage(String opsName, Map<String, Object> message);
-    void debugMessage(String opsName, Map<String, Object> message);
-    void infoMessage(String opsName, Map<String, Object> message);
-    void warningMessage(String opsName, Map<String, Object> message);
-    void errorMessage(String opsName, Map<String, Object> message);
+    void traceMessage(String opsName, Map<String, Object> message, String... ignoredFields);
 }

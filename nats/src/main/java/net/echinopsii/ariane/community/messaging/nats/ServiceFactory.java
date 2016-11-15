@@ -27,7 +27,6 @@ import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsServiceFactory
 import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
 import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -65,13 +64,13 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                         try {
                             Message msg = subs.nextMessage(10);
                             finalMessage = translator.decode(msg);
-                            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_DEBUG)) ((MomLogger)log).setTraceLevel(true);
+                            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(true);
                             ((MomLogger)log).traceMessage("MomConsumer(" + source + ").run", finalMessage);
-                            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_DEBUG)) ((MomLogger)log).setTraceLevel(false);
+                            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
                             if (msg!=null && isRunning) runnableReqActor.tell(msg, null);
                         } catch (TimeoutException e) {
                             if (finalMessage!=null &&
-                                    ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_DEBUG)) ((MomLogger)log).setTraceLevel(false);
+                                    ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
                             log.debug("no message found during last 10 ms");
                         } catch (IllegalStateException | IOException e) {
                             if (isRunning) log.error("[source: " + source + "]" + e.getMessage());

@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -370,28 +371,11 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
     }
 
     @Override
-    public void traceMessage(String opsName, Map<String, Object> message) {
-        this.trace(opsName + " - " + message.toString());
-    }
-
-    @Override
-    public void debugMessage(String opsName, Map<String, Object> message) {
-        this.debug(opsName + " - " + message.toString());
-    }
-
-    @Override
-    public void infoMessage(String opsName, Map<String, Object> message) {
-        this.info(opsName + " - " + message.toString());
-    }
-
-    @Override
-    public void warningMessage(String opsName, Map<String, Object> message) {
-        this.warn(opsName + " - " + message.toString());
-    }
-
-    @Override
-    public void errorMessage(String opsName, Map<String, Object> message) {
-        this.error(opsName + " - " + message.toString());
+    public void traceMessage(String opsName, Map<String, Object> message, String... ignoredFields) {
+        Map<String, Object> tracedMessage = new HashMap<>(message);
+        for (String ignoredField : ignoredFields)
+            tracedMessage.remove(ignoredField);
+        this.debug(opsName + " - " + tracedMessage.toString(), tracedMessage.toString());
     }
 
     public boolean isTraceLevelEnabled() {
@@ -402,11 +386,11 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
     @Override
     public void log(Marker marker, String fqcn, int level, String message, Object[] argArray, Throwable t) {
         if (this.isTraceLevelEnabled()) {
-            if (log.isTraceEnabled()) log.trace("[ " + Thread.currentThread().getName() + " | MSG DEBUG ]" + message);
-            else if (log.isDebugEnabled()) log.debug("[ " + Thread.currentThread().getName() + " | MSG DEBUG ]" + message);
-            else if (log.isInfoEnabled()) log.info("[ " + Thread.currentThread().getName() + " | MSG DEBUG ]" + message);
-            else if (log.isWarnEnabled()) log.warn("[ " + Thread.currentThread().getName() + " | MSG DEBUG ]" + message);
-            else if (log.isErrorEnabled()) log.error("[ " + Thread.currentThread().getName() + " | MSG DEBUG ]" + message);
+            if (log.isTraceEnabled()) log.trace("[ " + Thread.currentThread().getName() + " | MSG TRACE ]" + message);
+            else if (log.isDebugEnabled()) log.debug("[ " + Thread.currentThread().getName() + " | MSG TRACE ]" + message);
+            else if (log.isInfoEnabled()) log.info("[ " + Thread.currentThread().getName() + " | MSG TRACE ]" + message);
+            else if (log.isWarnEnabled()) log.warn("[ " + Thread.currentThread().getName() + " | MSG TRACE ]" + message);
+            else if (log.isErrorEnabled()) log.error("[ " + Thread.currentThread().getName() + " | MSG TRACE ]" + message);
         } else {
             if (log.isTraceEnabled()) log.trace(message);
             else if (log.isDebugEnabled()) log.debug(message);
