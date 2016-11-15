@@ -25,9 +25,11 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.nats.client.Message;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
+import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import net.echinopsii.ariane.community.messaging.nats.tools.PropertiesException;
 import net.echinopsii.ariane.community.messaging.nats.tools.PropertiesJSON;
 import net.echinopsii.ariane.community.messaging.nats.tools.ToolBox;
+import org.slf4j.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -37,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 
 public class MsgTranslator implements MomMsgTranslator<Message> {
+    private static final Logger log = MomLoggerFactory.getLogger(MsgTranslator.class);
 
     public final static String MSG_NATS_SUBJECT = "MSG_NATS_SUBJECT";
 

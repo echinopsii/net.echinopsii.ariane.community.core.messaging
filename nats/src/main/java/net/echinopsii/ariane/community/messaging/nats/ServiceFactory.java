@@ -25,15 +25,19 @@ import io.nats.client.SyncSubscription;
 import net.echinopsii.ariane.community.messaging.api.*;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsServiceFactory;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
+import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
-    private static final Logger log = LoggerFactory.getLogger(ServiceFactory.class);
+    private static final Logger log = MomLoggerFactory.getLogger(ServiceFactory.class);
+
+    private static MsgTranslator translator = new MsgTranslator();
 
     public ServiceFactory(Client client) {
         super(client);
@@ -57,10 +61,17 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                     isRunning = true;
 
                     while (isRunning) {
+                        Map<String, Object> finalMessage = null;
                         try {
                             Message msg = subs.nextMessage(10);
+                            finalMessage = translator.decode(msg);
+                            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_DEBUG)) ((MomLogger)log).setTraceLevel(true);
+                            ((MomLogger)log).traceMessage("MomConsumer(" + source + ").run", finalMessage);
+                            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_DEBUG)) ((MomLogger)log).setTraceLevel(false);
                             if (msg!=null && isRunning) runnableReqActor.tell(msg, null);
                         } catch (TimeoutException e) {
+                            if (finalMessage!=null &&
+                                    ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_DEBUG)) ((MomLogger)log).setTraceLevel(false);
                             log.debug("no message found during last 10 ms");
                         } catch (IllegalStateException | IOException e) {
                             if (isRunning) log.error("[source: " + source + "]" + e.getMessage());
@@ -140,7 +151,8 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             consumer = ServiceFactory.createConsumer(source, requestActor, connection);
             consumer.start();
             sessionMgr = ServiceFactory.createSessionManager(source, requestActor, connection);
-            ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient((Client) super.getMomClient()).setMsgGroupSubServiceMgr(sessionMgr);
+            ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient((Client) super.getMomClient()).
+                    setMsgGroupSubServiceMgr(sessionMgr);
             super.getServices().add(ret);
         }
         return ret;

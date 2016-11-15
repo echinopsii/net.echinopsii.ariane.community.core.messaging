@@ -19,16 +19,19 @@
 package net.echinopsii.ariane.community.messaging.nats.tools;
 
 import com.fasterxml.jackson.core.JsonFactory;
+import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
+import org.slf4j.Logger;
 
 import java.io.*;
 import java.math.BigDecimal;
 
 public class ToolBox {
+    private static final Logger log = MomLoggerFactory.getLogger(ToolBox.class);
 
     public static JsonFactory jFactory = new JsonFactory();
 
     public static String getOuputStreamContent(ByteArrayOutputStream out, String encoding) throws IOException {
-        ByteArrayInputStream input = new ByteArrayInputStream(((ByteArrayOutputStream) out).toByteArray());
+        ByteArrayInputStream input = new ByteArrayInputStream(out.toByteArray());
         BufferedReader br = new BufferedReader(new InputStreamReader(input, encoding));
         StringBuilder sb = new StringBuilder();
         String line;

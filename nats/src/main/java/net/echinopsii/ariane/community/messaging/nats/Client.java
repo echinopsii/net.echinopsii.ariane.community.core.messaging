@@ -26,15 +26,15 @@ import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.messaging.api.MomService;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsClient;
+import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Dictionary;
 
 public class Client extends MomAkkaAbsClient implements MomClient {
 
-    private static final Logger log = LoggerFactory.getLogger(Client.class);
+    private static final Logger log = MomLoggerFactory.getLogger(Client.class);
 
     private Connection connection = null;
     private ConnectionFactory factory = null;

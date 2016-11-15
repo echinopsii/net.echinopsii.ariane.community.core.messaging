@@ -23,11 +23,14 @@ import akka.japi.Creator;
 import io.nats.client.Connection;
 import io.nats.client.Message;
 import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder;
+import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsFeederActor;
+import org.slf4j.Logger;
 
 import java.util.Map;
 
 public class MsgFeederActor extends MsgAkkaAbsFeederActor {
+    private static final Logger log = MomLoggerFactory.getLogger(MsgFeederActor.class);
 
     private Connection connection;
     private String subject;

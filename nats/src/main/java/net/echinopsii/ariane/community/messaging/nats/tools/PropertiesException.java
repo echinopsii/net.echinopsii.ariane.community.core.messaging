@@ -19,7 +19,11 @@
 
 package net.echinopsii.ariane.community.messaging.nats.tools;
 
+import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
+import org.slf4j.Logger;
+
 public class PropertiesException extends Exception {
+    private static final Logger log = MomLoggerFactory.getLogger(PropertiesException.class);
     private static final long serialVersionUID = -5787356297845468334L;
 
     public PropertiesException() { super(); }

@@ -21,12 +21,14 @@ package net.echinopsii.ariane.community.messaging.nats;
 
 import akka.actor.ActorSystem;
 import akka.osgi.ActorSystemActivator;
+import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MessagingAkkaSystemActivator extends ActorSystemActivator {
-    private static final Logger log = LoggerFactory.getLogger(MessagingAkkaSystemActivator.class);
+    private static final Logger log = MomLoggerFactory.getLogger(MessagingAkkaSystemActivator.class);
+
     private static ActorSystem system ;
 
     public static ActorSystem getSystem() {

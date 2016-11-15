@@ -1,5 +1,6 @@
 /**
- * MoM client - init / close a MoM client
+ * Ariane Community Messaging
+ * Mom Client Interface
  *
  * Copyright (C) 8/24/14 echinopsii
  *

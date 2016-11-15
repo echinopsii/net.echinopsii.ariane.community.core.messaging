@@ -1,5 +1,7 @@
 /**
- * AppMsgWorker - work on a message
+ * Ariane Community Messaging
+ * Application Message Worker Interface
+ *
  * Copyright (C) 8/24/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify

@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +39,7 @@ import java.util.Map.Entry;
 
 public class PropertiesJSON {
 
-    private final static Logger log = LoggerFactory.getLogger(PropertiesJSON.class);
+    private static final Logger log = MomLoggerFactory.getLogger(PropertiesJSON.class);
 
     private static void arrayListToJSON(ArrayList<Object> aobj, String objectName, JsonGenerator jgenerator) throws IOException {
         if (objectName!=null)

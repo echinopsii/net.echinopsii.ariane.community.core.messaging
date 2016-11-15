@@ -22,11 +22,14 @@ import akka.actor.Props;
 import akka.japi.Creator;
 import io.nats.client.Message;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsSubsActor;
+import org.slf4j.Logger;
 
 import java.util.Map;
 
 public class MsgSubsActor extends MsgAkkaAbsSubsActor {
+    private static final Logger log = MomLoggerFactory.getLogger(MsgSubsActor.class);
 
     public static Props props(final AppMsgWorker worker) {
         return Props.create(new Creator<MsgSubsActor>() {

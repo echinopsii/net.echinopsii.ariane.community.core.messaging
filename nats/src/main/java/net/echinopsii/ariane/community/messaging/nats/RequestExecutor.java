@@ -25,6 +25,7 @@ import io.nats.client.SyncSubscription;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecutor;
+import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +35,7 @@ import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
-    private static final Logger log = LoggerFactory.getLogger(RequestExecutor.class);
+    private static final Logger log = MomLoggerFactory.getLogger(RequestExecutor.class);
 
     private HashMap<String, HashMap<String, SyncSubscription>> sessionsRPCSubs = new HashMap<>();
     private long rpc_timeout = 0;

@@ -1,6 +1,7 @@
 /**
- * [DEFINE YOUR PROJECT NAME/MODULE HERE]
- * [DEFINE YOUR PROJECT DESCRIPTION HERE] 
+ * Ariane Community Messaging
+ * Mom Service Interface
+ *
  * Copyright (C) 8/27/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify

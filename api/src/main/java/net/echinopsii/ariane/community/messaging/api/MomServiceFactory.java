@@ -1,5 +1,7 @@
 /**
- * MomServiceFactory - provides a service
+ * Ariane Community Messaging
+ * Mom Service Factory Interface
+ *
  * Copyright (C) 8/24/14 echinopsii
  *
  * This program is free software: you can redistribute it and/or modify
