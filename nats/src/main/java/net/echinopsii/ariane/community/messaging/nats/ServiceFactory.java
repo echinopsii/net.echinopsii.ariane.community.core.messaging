@@ -73,6 +73,8 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                                     ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
                             log.debug("no message found during last 10 ms");
                         } catch (IllegalStateException | IOException e) {
+                            if (finalMessage!=null &&
+                                    ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
                             if (isRunning) log.error("[source: " + source + "]" + e.getMessage());
                         }
                     }
