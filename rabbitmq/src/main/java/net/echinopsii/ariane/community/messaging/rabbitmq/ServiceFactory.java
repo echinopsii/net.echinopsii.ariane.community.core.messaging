@@ -20,6 +20,7 @@
 package net.echinopsii.ariane.community.messaging.rabbitmq;
 
 import akka.actor.ActorRef;
+import akka.actor.PoisonPill;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.QueueingConsumer;
@@ -100,12 +101,16 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         };
     }
 
-    private static MomMsgGroupSubServiceMgr createSessionManager(final String source, final Channel channel, final ActorRef runnableReqActor) {
+    private static MomMsgGroupSubServiceMgr createSessionManager(final String source, final Channel channel,
+                                                                 final AppMsgWorker requestCB, final MomClient client) {
         return new MomMsgGroupSubServiceMgr() {
             HashMap<String, MomConsumer> sessionConsumersRegistry = new HashMap<>();
+            HashMap<String, ActorRef> sessionActorRegistry = new HashMap<>();
             @Override
             public void openMsgGroupSubService(String groupID) {
                 final String sessionSource = groupID + "-" + source;
+                ActorRef runnableReqActor = ServiceFactory.createRequestActor(sessionSource, client, channel, requestCB);
+                sessionActorRegistry.put(groupID, runnableReqActor);
                 sessionConsumersRegistry.put(groupID, ServiceFactory.createConsumer(sessionSource, channel, runnableReqActor));
                 sessionConsumersRegistry.get(groupID).start();
             }
@@ -115,6 +120,9 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 if (sessionConsumersRegistry.containsKey(groupID)) {
                     sessionConsumersRegistry.get(groupID).stop();
                     sessionConsumersRegistry.remove(groupID);
+                    ((Client)client).getActorSystem().stop(sessionActorRegistry.get(groupID));
+                    if (!sessionActorRegistry.get(groupID).isTerminated()) sessionActorRegistry.get(groupID).tell(PoisonPill.getInstance(), null);
+                    sessionActorRegistry.remove(groupID);
                 }
             }
 
@@ -124,6 +132,9 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 for (String sessionID : sessionConsumersRegistryClone.keySet()) {
                     sessionConsumersRegistry.get(sessionID).stop();
                     sessionConsumersRegistry.remove(sessionID);
+                    ((Client)client).getActorSystem().stop(sessionActorRegistry.get(sessionID));
+                    if (!sessionActorRegistry.get(sessionID).isTerminated()) sessionActorRegistry.get(sessionID).tell(PoisonPill.getInstance(), null);
+                    sessionActorRegistry.remove(sessionID);
                 }
             }
         };
@@ -143,7 +154,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 channel.basicQos(1);
                 requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), channel, requestCB);
                 consumer = ServiceFactory.createConsumer(source, channel, requestActor);
-                msgGroupMgr = ServiceFactory.createSessionManager(source, channel, requestActor);
+                msgGroupMgr = ServiceFactory.createSessionManager(source, channel, requestCB, super.getMomClient());
                 consumer.start();
                 ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient((Client) super.getMomClient()).setMsgGroupSubServiceMgr(msgGroupMgr);
                 super.getServices().add(ret);
