@@ -19,7 +19,9 @@
 
 package net.echinopsii.ariane.community.messaging.common;
 
+import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
+import akka.actor.DeadLetter;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.messaging.api.MomService;
@@ -29,14 +31,18 @@ import java.util.*;
 
 public abstract class MomAkkaAbsClient implements MomClient {
 
-    private ActorSystem       system     = null;
-    private String            clientID   = null;
+    private static ActorRef dlLogger = null;
+
+    private ActorSystem system      = null;
+    private ActorRef mainSupervisor = null;
+    private String      clientID    = null;
 
     private MomServiceFactory serviceFactory ;
     private List<MomRequestExecutor> requestExecutors = new ArrayList<MomRequestExecutor>();
 
     private HashMap<String, Long> sessionThreadRegistry = new HashMap<>();
     private HashMap<Long, String> threadSessionRegistry = new HashMap<>();
+
 
     @Override
     public void init(Properties properties) throws Exception {
@@ -51,9 +57,32 @@ public abstract class MomAkkaAbsClient implements MomClient {
     }
 
     public void setActorSystem(ActorSystem sys) {
+        String mainSupName;
+        if (this.clientID!=null) mainSupName = this.clientID.replace(" ", "_") + "_main_supervisor";
+        else mainSupName = UUID.randomUUID() + "_main_supervisor";
         this.system = sys;
+        if (dlLogger==null) {
+            dlLogger = this.system.actorOf(MomAkkaDLLogger.props(), "DLLogger");
+            this.system.eventStream().subscribe(dlLogger, DeadLetter.class);
+        }
+        this.mainSupervisor = this.system.actorOf(MomAkkaSupervisor.props(), mainSupName);
     }
 
+    public ActorRef getMainSupervisor() {
+        return mainSupervisor;
+    }
+
+    public void preCloseMainSupervisor() {
+        MomAkkaSupervisor.willStopSoon(mainSupervisor);
+    }
+
+    public void closeMainSupervisor() {
+        this.system.stop(mainSupervisor);
+        if (dlLogger!=null) {
+            this.system.stop(dlLogger);
+            dlLogger = null;
+        }
+    }
 
     @Override
     public String getClientID() {
@@ -99,17 +128,42 @@ public abstract class MomAkkaAbsClient implements MomClient {
         }
     }
 
+    HashMap<String, ActorRef> msgGroupSupervisors = new HashMap<>();
+
+    public ActorRef getMsgGroupSupervisor(String groupID) {
+        return msgGroupSupervisors.get(groupID);
+    }
+
+    public void preCloseMsgGroupSupervisors() {
+        for (ActorRef supervisor : msgGroupSupervisors.values()) MomAkkaSupervisor.willStopSoon(supervisor);
+    }
+
+    public void closeMsgGroupSupervisors() {
+        for (ActorRef supervisor : msgGroupSupervisors.values()) this.system.stop(supervisor);
+    }
+
     @Override
     public void openMsgGroupService(String groupID) {
-        if (this.getServiceFactory()!=null)
-            for (MomService service : ((MomAkkaAbsServiceFactory)this.getServiceFactory()).getServices())
-                if (service.getMsgGroupSubServiceMgr()!=null) service.getMsgGroupSubServiceMgr().openMsgGroupSubService(groupID);
+        if (this.getServiceFactory()!=null) {
+            msgGroupSupervisors.put(
+                    groupID,
+                    this.system.actorOf(MomAkkaSupervisor.props(), groupID + "_msggroup_supervisor")
+            );
+            for (MomService service : ((MomAkkaAbsServiceFactory) this.getServiceFactory()).getServices())
+                if (service.getMsgGroupSubServiceMgr() != null)
+                    service.getMsgGroupSubServiceMgr().openMsgGroupSubService(groupID);
+        }
     }
 
     @Override
     public void closeMsgGroupService(String groupID) {
-        if (this.getServiceFactory()!=null)
-            for (MomService service : ((MomAkkaAbsServiceFactory)this.getServiceFactory()).getServices())
-                if (service.getMsgGroupSubServiceMgr()!=null) service.getMsgGroupSubServiceMgr().closeMsgGroupSubService(groupID);
+        if (this.getServiceFactory()!=null) {
+            ActorRef msgGroupSupervisor = this.getMsgGroupSupervisor(groupID);
+            if (msgGroupSupervisor!=null) MomAkkaSupervisor.willStopSoon(msgGroupSupervisor);
+            for (MomService service : ((MomAkkaAbsServiceFactory) this.getServiceFactory()).getServices())
+                if (service.getMsgGroupSubServiceMgr() != null)
+                    service.getMsgGroupSubServiceMgr().closeMsgGroupSubService(groupID);
+            if (msgGroupSupervisor!=null) this.system.stop(msgGroupSupervisor);
+        }
     }
 }
