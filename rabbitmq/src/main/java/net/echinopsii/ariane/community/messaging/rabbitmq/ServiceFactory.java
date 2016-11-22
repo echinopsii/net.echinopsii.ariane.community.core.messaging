@@ -109,13 +109,13 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         };
     }
 
-    private static MomMsgGroupSubServiceMgr createMsgGroupServiceManager(final String source, final Channel channel,
+    private static MomMsgGroupServiceMgr createMsgGroupServiceManager(final String source, final Channel channel,
                                                                          final AppMsgWorker requestCB, final MomClient client) {
-        return new MomMsgGroupSubServiceMgr() {
+        return new MomMsgGroupServiceMgr() {
             HashMap<String, MomConsumer> msgGroupConsumersRegistry = new HashMap<>();
             HashMap<String, ActorRef> msgGroupActorRegistry = new HashMap<>();
             @Override
-            public void openMsgGroupSubService(String groupID) {
+            public void openMsgGroupService(String groupID) {
                 final String sessionSource = groupID + "-" + source;
                 ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
                 ActorRef runnableReqActor = null;
@@ -130,7 +130,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             }
 
             @Override
-            public void closeMsgGroupSubService(String groupID) {
+            public void closeMsgGroupService(String groupID) {
                 if (msgGroupConsumersRegistry.containsKey(groupID)) {
                     ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
                     msgGroupConsumersRegistry.get(groupID).stop();
@@ -164,7 +164,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         MomAkkaService ret = null;
         ActorRef    requestActor ;
         MomConsumer consumer ;
-        MomMsgGroupSubServiceMgr msgGroupMgr ;
+        MomMsgGroupServiceMgr msgGroupMgr ;
 
         if (connection != null && connection.isOpen()) {
             try {
@@ -174,7 +174,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 consumer = ServiceFactory.createConsumer(source, channel, requestActor);
                 msgGroupMgr = ServiceFactory.createMsgGroupServiceManager(source, channel, requestCB, super.getMomClient());
                 consumer.start();
-                ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient((Client) super.getMomClient()).setMsgGroupSubServiceMgr(msgGroupMgr);
+                ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient((Client) super.getMomClient()).setMsgGroupServiceMgr(msgGroupMgr);
                 super.getServices().add(ret);
 
             } catch (IOException e) {

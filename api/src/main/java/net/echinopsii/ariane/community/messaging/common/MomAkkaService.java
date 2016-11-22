@@ -27,7 +27,7 @@ import scala.concurrent.duration.Duration;
 import java.util.concurrent.TimeUnit;
 
 public class MomAkkaService implements MomService<ActorRef>{
-    private MomMsgGroupSubServiceMgr msgGroupSubServiceMgr;
+    private MomMsgGroupServiceMgr msgGroupServiceMgr;
     private MomConsumer consumer;
     private ActorRef    msgWorker;
     private ActorRef    msgFeeder;
@@ -74,20 +74,20 @@ public class MomAkkaService implements MomService<ActorRef>{
     }
 
     @Override
-    public MomMsgGroupSubServiceMgr getMsgGroupSubServiceMgr() {
-        return msgGroupSubServiceMgr;
+    public MomMsgGroupServiceMgr getMsgGroupServiceMgr() {
+        return msgGroupServiceMgr;
     }
 
     @Override
-    public MomAkkaService setMsgGroupSubServiceMgr(MomMsgGroupSubServiceMgr groupMgr) {
-        this.msgGroupSubServiceMgr = groupMgr;
+    public MomAkkaService setMsgGroupServiceMgr(MomMsgGroupServiceMgr groupMgr) {
+        this.msgGroupServiceMgr = groupMgr;
         return this;
     }
 
     @Override
     public void stop() {
         if (consumer != null) consumer.stop();
-        if (msgGroupSubServiceMgr !=null) msgGroupSubServiceMgr.stop();
+        if (msgGroupServiceMgr !=null) msgGroupServiceMgr.stop();
         if (msgFeeder != null) client.getActorSystem().stop(msgFeeder);
         if (msgWorker !=null) client.getActorSystem().stop(msgWorker);
         if (cancellable != null) cancellable.cancel();

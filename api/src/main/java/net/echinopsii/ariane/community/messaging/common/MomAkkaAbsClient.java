@@ -150,8 +150,8 @@ public abstract class MomAkkaAbsClient implements MomClient {
                     this.system.actorOf(MomAkkaSupervisor.props(), groupID + "_msggroup_supervisor")
             );
             for (MomService service : ((MomAkkaAbsServiceFactory) this.getServiceFactory()).getServices())
-                if (service.getMsgGroupSubServiceMgr() != null)
-                    service.getMsgGroupSubServiceMgr().openMsgGroupSubService(groupID);
+                if (service.getMsgGroupServiceMgr() != null)
+                    service.getMsgGroupServiceMgr().openMsgGroupService(groupID);
         }
     }
 
@@ -161,8 +161,8 @@ public abstract class MomAkkaAbsClient implements MomClient {
             ActorRef msgGroupSupervisor = this.getMsgGroupSupervisor(groupID);
             if (msgGroupSupervisor!=null) MomAkkaSupervisor.willStopSoon(msgGroupSupervisor);
             for (MomService service : ((MomAkkaAbsServiceFactory) this.getServiceFactory()).getServices())
-                if (service.getMsgGroupSubServiceMgr() != null)
-                    service.getMsgGroupSubServiceMgr().closeMsgGroupSubService(groupID);
+                if (service.getMsgGroupServiceMgr() != null)
+                    service.getMsgGroupServiceMgr().closeMsgGroupService(groupID);
             if (msgGroupSupervisor!=null) this.system.stop(msgGroupSupervisor);
         }
     }

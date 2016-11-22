@@ -30,8 +30,8 @@ public interface MomService<A> {
     A getMsgFeeder();
     MomService setMsgFeeder(A actorRef, int schedulerInterval);
 
-    MomMsgGroupSubServiceMgr getMsgGroupSubServiceMgr();
-    MomService setMsgGroupSubServiceMgr(MomMsgGroupSubServiceMgr groupMgr);
+    MomMsgGroupServiceMgr getMsgGroupServiceMgr();
+    MomService setMsgGroupServiceMgr(MomMsgGroupServiceMgr groupMgr);
 
     void stop();
 }

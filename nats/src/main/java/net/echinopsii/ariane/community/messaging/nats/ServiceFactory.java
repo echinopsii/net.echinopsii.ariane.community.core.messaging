@@ -114,14 +114,14 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         };
     }
 
-    private static MomMsgGroupSubServiceMgr createMsgGroupServiceManager(final String source, final AppMsgWorker requestCB, final MomClient client) {
-        return new MomMsgGroupSubServiceMgr() {
+    private static MomMsgGroupServiceMgr createMsgGroupServiceManager(final String source, final AppMsgWorker requestCB, final MomClient client) {
+        return new MomMsgGroupServiceMgr() {
             Connection connection   = ((Client)client).getConnection();
             HashMap<String, MomConsumer> msgGroupConsumersRegistry = new HashMap<>();
             HashMap<String, ActorRef> msgGroupActorRegistry = new HashMap<>();
 
             @Override
-            public void openMsgGroupSubService(String groupID) {
+            public void openMsgGroupService(String groupID) {
                 final String sessionSource = groupID + "-" + source;
                 ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
                 ActorRef runnableReqActor = null;
@@ -136,7 +136,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             }
 
             @Override
-            public void closeMsgGroupSubService(String groupID) {
+            public void closeMsgGroupService(String groupID) {
                 if (msgGroupConsumersRegistry.containsKey(groupID)) {
                     ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
                     msgGroupConsumersRegistry.get(groupID).stop();
@@ -171,15 +171,15 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         MomAkkaService ret = null;
         ActorRef requestActor;
         MomConsumer consumer ;
-        MomMsgGroupSubServiceMgr msgGroupSubServiceMgr = null;
+        MomMsgGroupServiceMgr msgGroupServiceMgr = null;
 
         if (connection != null && !connection.isClosed()) {
             requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), requestCB, null);
             consumer = ServiceFactory.createConsumer(source, requestActor, connection);
             consumer.start();
-            msgGroupSubServiceMgr = ServiceFactory.createMsgGroupServiceManager(source, requestCB, super.getMomClient());
+            msgGroupServiceMgr = ServiceFactory.createMsgGroupServiceManager(source, requestCB, super.getMomClient());
             ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient((Client) super.getMomClient()).
-                    setMsgGroupSubServiceMgr(msgGroupSubServiceMgr);
+                    setMsgGroupServiceMgr(msgGroupServiceMgr);
             super.getServices().add(ret);
         }
         return ret;

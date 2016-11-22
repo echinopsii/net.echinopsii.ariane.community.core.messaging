@@ -19,8 +19,8 @@
  */
 package net.echinopsii.ariane.community.messaging.api;
 
-public interface MomMsgGroupSubServiceMgr {
-    void openMsgGroupSubService(String groupID);
-    void closeMsgGroupSubService(String groupID);
+public interface MomMsgGroupServiceMgr {
+    void openMsgGroupService(String groupID);
+    void closeMsgGroupService(String groupID);
     void stop();
 }
