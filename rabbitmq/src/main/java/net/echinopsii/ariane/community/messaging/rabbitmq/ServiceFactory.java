@@ -27,19 +27,27 @@ import com.rabbitmq.client.QueueingConsumer;
 import net.echinopsii.ariane.community.messaging.api.*;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsServiceFactory;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaSupervisor;
+import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.util.HashMap;
 
 public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
 
+    private static final Logger log = MomLoggerFactory.getLogger(ServiceFactory.class);
+
     public ServiceFactory(Client client) {
         super(client);
     }
 
-    private static ActorRef createRequestActor(String source, MomClient client, Channel channel, AppMsgWorker requestCB) {
-        return ((Client)client).getActorSystem().actorOf(
-                MsgRequestActor.props(((Client)client), channel, requestCB), source + "_msgWorker"
+    private static ActorRef createRequestActor(String source, MomClient client, Channel channel, AppMsgWorker requestCB, ActorRef supervisor) {
+        ActorRef sup = supervisor;
+        if (sup == null) sup = ((Client)client).getMainSupervisor();
+        return MomAkkaSupervisor.createNewSupervisedService(
+                sup, MsgRequestActor.props(((Client) client), channel, requestCB),
+                source + "_msgWorker"
         );
     }
 
@@ -101,40 +109,50 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         };
     }
 
-    private static MomMsgGroupSubServiceMgr createSessionManager(final String source, final Channel channel,
-                                                                 final AppMsgWorker requestCB, final MomClient client) {
+    private static MomMsgGroupSubServiceMgr createMsgGroupServiceManager(final String source, final Channel channel,
+                                                                         final AppMsgWorker requestCB, final MomClient client) {
         return new MomMsgGroupSubServiceMgr() {
-            HashMap<String, MomConsumer> sessionConsumersRegistry = new HashMap<>();
-            HashMap<String, ActorRef> sessionActorRegistry = new HashMap<>();
+            HashMap<String, MomConsumer> msgGroupConsumersRegistry = new HashMap<>();
+            HashMap<String, ActorRef> msgGroupActorRegistry = new HashMap<>();
             @Override
             public void openMsgGroupSubService(String groupID) {
                 final String sessionSource = groupID + "-" + source;
-                ActorRef runnableReqActor = ServiceFactory.createRequestActor(sessionSource, client, channel, requestCB);
-                sessionActorRegistry.put(groupID, runnableReqActor);
-                sessionConsumersRegistry.put(groupID, ServiceFactory.createConsumer(sessionSource, channel, runnableReqActor));
-                sessionConsumersRegistry.get(groupID).start();
+                ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
+                ActorRef runnableReqActor = null;
+                if (msgGroupSupervisor!=null) runnableReqActor = ServiceFactory.createRequestActor(groupID, client, channel, requestCB, msgGroupSupervisor);
+                else {
+                    log.warn("No supervisor found for group " + groupID + ". Use main mom supervisor.");
+                    runnableReqActor = ServiceFactory.createRequestActor(sessionSource, client, channel, requestCB, null);
+                }
+                msgGroupActorRegistry.put(groupID, runnableReqActor);
+                msgGroupConsumersRegistry.put(groupID, ServiceFactory.createConsumer(sessionSource, channel, runnableReqActor));
+                msgGroupConsumersRegistry.get(groupID).start();
             }
 
             @Override
             public void closeMsgGroupSubService(String groupID) {
-                if (sessionConsumersRegistry.containsKey(groupID)) {
-                    sessionConsumersRegistry.get(groupID).stop();
-                    sessionConsumersRegistry.remove(groupID);
-                    ((Client)client).getActorSystem().stop(sessionActorRegistry.get(groupID));
-                    if (!sessionActorRegistry.get(groupID).isTerminated()) sessionActorRegistry.get(groupID).tell(PoisonPill.getInstance(), null);
-                    sessionActorRegistry.remove(groupID);
+                if (msgGroupConsumersRegistry.containsKey(groupID)) {
+                    ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
+                    msgGroupConsumersRegistry.get(groupID).stop();
+                    msgGroupConsumersRegistry.remove(groupID);
+                    ((Client)client).getActorSystem().stop(msgGroupActorRegistry.get(groupID));
+                    if (!msgGroupActorRegistry.get(groupID).isTerminated() && msgGroupSupervisor==null)
+                        msgGroupActorRegistry.get(groupID).tell(PoisonPill.getInstance(), null);
+                    msgGroupActorRegistry.remove(groupID);
                 }
             }
 
             @Override
             public void stop() {
-                HashMap<String, MomConsumer> sessionConsumersRegistryClone = (HashMap<String, MomConsumer>) sessionConsumersRegistry.clone();
-                for (String sessionID : sessionConsumersRegistryClone.keySet()) {
-                    sessionConsumersRegistry.get(sessionID).stop();
-                    sessionConsumersRegistry.remove(sessionID);
-                    ((Client)client).getActorSystem().stop(sessionActorRegistry.get(sessionID));
-                    if (!sessionActorRegistry.get(sessionID).isTerminated()) sessionActorRegistry.get(sessionID).tell(PoisonPill.getInstance(), null);
-                    sessionActorRegistry.remove(sessionID);
+                HashMap<String, MomConsumer> sessionConsumersRegistryClone = (HashMap<String, MomConsumer>) msgGroupConsumersRegistry.clone();
+                for (String groupID : sessionConsumersRegistryClone.keySet()) {
+                    ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
+                    msgGroupConsumersRegistry.get(groupID).stop();
+                    msgGroupConsumersRegistry.remove(groupID);
+                    ((Client)client).getActorSystem().stop(msgGroupActorRegistry.get(groupID));
+                    if (!msgGroupActorRegistry.get(groupID).isTerminated() && msgGroupSupervisor==null)
+                        msgGroupActorRegistry.get(groupID).tell(PoisonPill.getInstance(), null);
+                    msgGroupActorRegistry.remove(groupID);
                 }
             }
         };
@@ -152,9 +170,9 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             try {
                 Channel channel = connection.createChannel();
                 channel.basicQos(1);
-                requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), channel, requestCB);
+                requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), channel, requestCB, null);
                 consumer = ServiceFactory.createConsumer(source, channel, requestActor);
-                msgGroupMgr = ServiceFactory.createSessionManager(source, channel, requestCB, super.getMomClient());
+                msgGroupMgr = ServiceFactory.createMsgGroupServiceManager(source, channel, requestCB, super.getMomClient());
                 consumer.start();
                 ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient((Client) super.getMomClient()).setMsgGroupSubServiceMgr(msgGroupMgr);
                 super.getServices().add(ret);
@@ -186,7 +204,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             try {
                 Channel channel = connection.createChannel();
                 channel.basicQos(1);
-                requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), channel, requestCB);
+                requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), channel, requestCB, null);
                 consumer = ServiceFactory.createConsumer(source, channel, requestActor);
                 consumer.start();
 

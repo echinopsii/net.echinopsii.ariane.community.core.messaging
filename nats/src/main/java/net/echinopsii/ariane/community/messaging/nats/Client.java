@@ -41,6 +41,8 @@ public class Client extends MomAkkaAbsClient implements MomClient {
 
     @Override
     public void init(Dictionary properties) throws Exception {
+        if (properties.get(NATS_CONNECTION_NAME)!=null)
+            super.setClientID((String) properties.get(NATS_CONNECTION_NAME));
         try {
             if (Class.forName("akka.osgi.ActorSystemActivator")!=null && MessagingAkkaSystemActivator.getSystem() != null)
                 super.setActorSystem(MessagingAkkaSystemActivator.getSystem());
@@ -57,11 +59,8 @@ public class Client extends MomAkkaAbsClient implements MomClient {
             factory.setUsername((String) properties.get(MOM_USER));
         if (properties.get(MOM_PSWD)!=null)
             factory.setPassword((String) properties.get(MOM_PSWD));
-        if (properties.get(NATS_CONNECTION_NAME)!=null) {
+        if (properties.get(NATS_CONNECTION_NAME)!=null)
             factory.setConnectionName((String) properties.get(NATS_CONNECTION_NAME));
-            super.setClientID((String) properties.get(NATS_CONNECTION_NAME));
-        }
-
         connection = factory.createConnection();
 
         super.setServiceFactory(new ServiceFactory(this));
@@ -71,9 +70,13 @@ public class Client extends MomAkkaAbsClient implements MomClient {
     public void close() throws Exception {
         for (MomRequestExecutor rexec : super.getRequestExecutors())
             ((RequestExecutor)rexec).stop();
+        super.preCloseMsgGroupSupervisors();
+        super.preCloseMainSupervisor();
         if (super.getServiceFactory()!=null)
             for (MomService<ActorRef> service : ((ServiceFactory)super.getServiceFactory()).getServices())
                 service.stop();
+        super.closeMsgGroupSupervisors();
+        super.closeMainSupervisor();
         if (!connection.isClosed())
             connection.close();
     }

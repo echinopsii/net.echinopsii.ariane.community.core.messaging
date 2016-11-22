@@ -53,6 +53,7 @@ public class ClientTest {
         try {
             client.init(props);
         } catch (Exception e) {
+            e.printStackTrace();
             System.err.println("No local NATS to test");
             client = null;
         }

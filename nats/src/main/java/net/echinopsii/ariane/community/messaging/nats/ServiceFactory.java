@@ -26,6 +26,7 @@ import io.nats.client.SyncSubscription;
 import net.echinopsii.ariane.community.messaging.api.*;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsServiceFactory;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaSupervisor;
 import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import org.slf4j.Logger;
 
@@ -43,9 +44,12 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         super(client);
     }
 
-    private static ActorRef createRequestActor(String source, MomClient client, AppMsgWorker requestCB) {
-        return ((Client)client).getActorSystem().actorOf(
-                MsgRequestActor.props(((Client)client), requestCB), source + "_msgWorker"
+    private static ActorRef createRequestActor(String source, MomClient client, AppMsgWorker requestCB, ActorRef supervisor) {
+        ActorRef sup = supervisor;
+        if (sup == null) sup = ((Client)client).getMainSupervisor();
+        return MomAkkaSupervisor.createNewSupervisedService(
+                sup, MsgRequestActor.props(((Client) client), requestCB),
+                source + "_msgWorker"
         );
     }
 
@@ -67,13 +71,13 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                             finalMessage = translator.decode(msg);
                             if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(true);
                             ((MomLogger)log).traceMessage("MomConsumer(" + source + ").run", finalMessage);
-                            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
                             if (msg!=null && isRunning) runnableReqActor.tell(msg, null);
+                            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
                         } catch (TimeoutException e) {
                             if (finalMessage!=null &&
                                     ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
                             log.debug("no message found during last 10 ms");
-                        } catch (IllegalStateException | IOException e) {
+                        } catch (IllegalStateException | IOException | InterruptedException e) {
                             if (finalMessage!=null &&
                                     ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
                             if (isRunning) log.error("[source: " + source + "]" + e.getMessage());
@@ -110,40 +114,51 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         };
     }
 
-    private static MomMsgGroupSubServiceMgr createSessionManager(final String source, final AppMsgWorker requestCB, final MomClient client) {
+    private static MomMsgGroupSubServiceMgr createMsgGroupServiceManager(final String source, final AppMsgWorker requestCB, final MomClient client) {
         return new MomMsgGroupSubServiceMgr() {
             Connection connection   = ((Client)client).getConnection();
-            HashMap<String, MomConsumer> sessionConsumersRegistry = new HashMap<>();
-            HashMap<String, ActorRef> sessionActorRegistry = new HashMap<>();
+            HashMap<String, MomConsumer> msgGroupConsumersRegistry = new HashMap<>();
+            HashMap<String, ActorRef> msgGroupActorRegistry = new HashMap<>();
+
             @Override
             public void openMsgGroupSubService(String groupID) {
                 final String sessionSource = groupID + "-" + source;
-                ActorRef runnableReqActor = ServiceFactory.createRequestActor(sessionSource, client, requestCB);
-                sessionActorRegistry.put(groupID, runnableReqActor);
-                sessionConsumersRegistry.put(groupID, ServiceFactory.createConsumer(sessionSource, runnableReqActor, connection));
-                sessionConsumersRegistry.get(groupID).start();
+                ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
+                ActorRef runnableReqActor = null;
+                if (msgGroupSupervisor!=null) runnableReqActor = ServiceFactory.createRequestActor(source, client, requestCB, msgGroupSupervisor);
+                else {
+                    log.warn("No supervisor found for group " + groupID + ". Use main mom supervisor.");
+                    runnableReqActor = ServiceFactory.createRequestActor(sessionSource, client, requestCB, ((Client)client).getMainSupervisor());
+                }
+                msgGroupActorRegistry.put(groupID, runnableReqActor);
+                msgGroupConsumersRegistry.put(groupID, ServiceFactory.createConsumer(sessionSource, runnableReqActor, connection));
+                msgGroupConsumersRegistry.get(groupID).start();
             }
 
             @Override
             public void closeMsgGroupSubService(String groupID) {
-                if (sessionConsumersRegistry.containsKey(groupID)) {
-                    sessionConsumersRegistry.get(groupID).stop();
-                    sessionConsumersRegistry.remove(groupID);
-                    ((Client)client).getActorSystem().stop(sessionActorRegistry.get(groupID));
-                    if (!sessionActorRegistry.get(groupID).isTerminated()) sessionActorRegistry.get(groupID).tell(PoisonPill.getInstance(), null);
-                    sessionActorRegistry.remove(groupID);
+                if (msgGroupConsumersRegistry.containsKey(groupID)) {
+                    ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
+                    msgGroupConsumersRegistry.get(groupID).stop();
+                    msgGroupConsumersRegistry.remove(groupID);
+                    ((Client)client).getActorSystem().stop(msgGroupActorRegistry.get(groupID));
+                    if (!msgGroupActorRegistry.get(groupID).isTerminated() && msgGroupSupervisor==null)
+                        msgGroupActorRegistry.get(groupID).tell(PoisonPill.getInstance(), null);
+                    msgGroupActorRegistry.remove(groupID);
                 }
             }
 
             @Override
             public void stop() {
-                HashMap<String, MomConsumer> sessionConsumersRegistryClone = (HashMap<String, MomConsumer>) sessionConsumersRegistry.clone();
-                for (String sessionID : sessionConsumersRegistryClone.keySet()) {
-                    sessionConsumersRegistry.get(sessionID).stop();
-                    sessionConsumersRegistry.remove(sessionID);
-                    ((Client)client).getActorSystem().stop(sessionActorRegistry.get(sessionID));
-                    if (!sessionActorRegistry.get(sessionID).isTerminated()) sessionActorRegistry.get(sessionID).tell(PoisonPill.getInstance(), null);
-                    sessionActorRegistry.remove(sessionID);
+                HashMap<String, MomConsumer> msgGroupConsumersRegistryClone = (HashMap<String, MomConsumer>) msgGroupConsumersRegistry.clone();
+                for (String groupID : msgGroupConsumersRegistryClone.keySet()) {
+                    ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
+                    msgGroupConsumersRegistry.get(groupID).stop();
+                    msgGroupConsumersRegistry.remove(groupID);
+                    ((Client)client).getActorSystem().stop(msgGroupActorRegistry.get(groupID));
+                    if (!msgGroupActorRegistry.get(groupID).isTerminated() && msgGroupSupervisor==null)
+                        msgGroupActorRegistry.get(groupID).tell(PoisonPill.getInstance(), null);
+                    msgGroupActorRegistry.remove(groupID);
                 }
             }
         };
@@ -153,18 +168,18 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
     public MomAkkaService msgGroupRequestService(String source, AppMsgWorker requestCB) {
         final Connection connection   = ((Client)super.getMomClient()).getConnection();
 
-        MomAkkaService ret    = null;
+        MomAkkaService ret = null;
         ActorRef requestActor;
         MomConsumer consumer ;
-        MomMsgGroupSubServiceMgr sessionMgr = null;
+        MomMsgGroupSubServiceMgr msgGroupSubServiceMgr = null;
 
         if (connection != null && !connection.isClosed()) {
-            requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), requestCB);
+            requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), requestCB, null);
             consumer = ServiceFactory.createConsumer(source, requestActor, connection);
             consumer.start();
-            sessionMgr = ServiceFactory.createSessionManager(source, requestCB, super.getMomClient());
+            msgGroupSubServiceMgr = ServiceFactory.createMsgGroupServiceManager(source, requestCB, super.getMomClient());
             ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient((Client) super.getMomClient()).
-                    setMsgGroupSubServiceMgr(sessionMgr);
+                    setMsgGroupSubServiceMgr(msgGroupSubServiceMgr);
             super.getServices().add(ret);
         }
         return ret;
@@ -179,8 +194,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         MomConsumer consumer  = null;
 
         if (connection != null && !connection.isClosed()) {
-            //connection.publish(Message);
-            requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), requestCB);
+            requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), requestCB, null);
             consumer = ServiceFactory.createConsumer(source, requestActor, connection);
             consumer.start();
 

@@ -47,6 +47,8 @@ public class Client extends MomAkkaAbsClient implements MomClient {
 
     @Override
     public void init(Dictionary properties) throws Exception {
+        if (properties.get(MomClient.RBQ_INFORMATION_KEY)!=null)
+            super.setClientID((String) properties.get(MomClient.RBQ_INFORMATION_KEY));
         try {
             if (Class.forName("akka.osgi.ActorSystemActivator")!=null && MessagingAkkaSystemActivator.getSystem() != null)
                 super.setActorSystem(MessagingAkkaSystemActivator.getSystem());
@@ -69,10 +71,8 @@ public class Client extends MomAkkaAbsClient implements MomClient {
         Map<String, Object> factoryProperties = factory.getClientProperties();
         if (properties.get(MomClient.RBQ_PRODUCT_KEY)!=null)
             factoryProperties.put(RBQ_PRODUCT_KEY,properties.get(MomClient.RBQ_PRODUCT_KEY));
-        if (properties.get(MomClient.RBQ_INFORMATION_KEY)!=null) {
-            super.setClientID((String) properties.get(MomClient.RBQ_INFORMATION_KEY));
+        if (properties.get(MomClient.RBQ_INFORMATION_KEY)!=null)
             factoryProperties.put(RBQ_INFORMATION_KEY, super.getClientID());
-        }
         if (properties.get(MomClient.RBQ_PLATFORM_KEY)!=null)
             factoryProperties.put(RBQ_PLATFORM_KEY,properties.get(MomClient.RBQ_PLATFORM_KEY));
         else
@@ -98,9 +98,13 @@ public class Client extends MomAkkaAbsClient implements MomClient {
     public void close() throws IOException {
         for (MomRequestExecutor rexec : super.getRequestExecutors())
             ((RequestExecutor)rexec).stop();
+        super.preCloseMsgGroupSupervisors();
+        super.preCloseMainSupervisor();
         if (super.getServiceFactory()!=null)
             for (MomService<ActorRef> service : ((ServiceFactory)super.getServiceFactory()).getServices())
                 service.stop();
+        super.closeMsgGroupSupervisors();
+        super.closeMainSupervisor();
         if (connection.isOpen())
             connection.close();
     }
