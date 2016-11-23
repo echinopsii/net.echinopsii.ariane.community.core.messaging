@@ -21,14 +21,12 @@ package net.echinopsii.ariane.community.messaging.rabbitmq;
 
 import akka.actor.ActorRef;
 import akka.actor.PoisonPill;
+import akka.actor.Props;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.QueueingConsumer;
 import net.echinopsii.ariane.community.messaging.api.*;
-import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsServiceFactory;
-import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
-import net.echinopsii.ariane.community.messaging.common.MomAkkaSupervisor;
-import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
+import net.echinopsii.ariane.community.messaging.common.*;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -48,6 +46,18 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         return MomAkkaSupervisor.createNewSupervisedService(
                 sup, MsgRequestActor.props(((Client) client), channel, requestCB),
                 source + "_msgWorker"
+        );
+    }
+
+    private static ActorRef createRequestRouter(String source, MomClient client, Channel channel, AppMsgWorker requestCB, ActorRef supervisor) {
+        Props routeeProps = MsgRequestActor.props(((Client) client), channel, requestCB);
+        String routeeNamePrefix = source + "_msgWorker";
+        ActorRef sup = supervisor;
+        if (sup == null) sup = ((Client)client).getMainSupervisor();
+        return MomAkkaSupervisor.createNewSupervisedService(
+                sup,
+                MomAkkaRequestRouter.props(routeeProps, routeeNamePrefix, ((Client) client).getNbRouteesPerService()),
+                source + "_router"
         );
     }
 
@@ -170,7 +180,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             try {
                 Channel channel = connection.createChannel();
                 channel.basicQos(1);
-                requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), channel, requestCB, null);
+                requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), channel, requestCB, null);
                 consumer = ServiceFactory.createConsumer(source, channel, requestActor);
                 msgGroupMgr = ServiceFactory.createMsgGroupServiceManager(source, channel, requestCB, super.getMomClient());
                 consumer.start();
@@ -204,7 +214,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             try {
                 Channel channel = connection.createChannel();
                 channel.basicQos(1);
-                requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), channel, requestCB, null);
+                requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), channel, requestCB, null);
                 consumer = ServiceFactory.createConsumer(source, channel, requestActor);
                 consumer.start();
 

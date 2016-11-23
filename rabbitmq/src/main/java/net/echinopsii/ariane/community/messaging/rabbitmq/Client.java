@@ -49,6 +49,11 @@ public class Client extends MomAkkaAbsClient implements MomClient {
     public void init(Dictionary properties) throws Exception {
         if (properties.get(MomClient.RBQ_INFORMATION_KEY)!=null)
             super.setClientID((String) properties.get(MomClient.RBQ_INFORMATION_KEY));
+        if (properties.get(MOM_CLI_MSG_DEBUG_ON_TIMEOUT)!=null &&
+                (((String)properties.get(MOM_CLI_MSG_DEBUG_ON_TIMEOUT)).toLowerCase().equals("true")))
+            super.setMsgDebugOnTimeout(true);
+        if (properties.get(MOM_CLI_ROUTEES_NB_PER_SERVICE)!=null)
+            super.setNbRouteesPerService(new Integer((String) properties.get(MOM_CLI_ROUTEES_NB_PER_SERVICE)));
         try {
             if (Class.forName("akka.osgi.ActorSystemActivator")!=null && MessagingAkkaSystemActivator.getSystem() != null)
                 super.setActorSystem(MessagingAkkaSystemActivator.getSystem());
