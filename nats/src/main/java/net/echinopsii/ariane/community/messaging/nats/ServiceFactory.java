@@ -20,14 +20,13 @@ package net.echinopsii.ariane.community.messaging.nats;
 
 import akka.actor.ActorRef;
 import akka.actor.PoisonPill;
+import akka.actor.Props;
 import io.nats.client.Connection;
 import io.nats.client.Message;
 import io.nats.client.SyncSubscription;
 import net.echinopsii.ariane.community.messaging.api.*;
-import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsServiceFactory;
-import net.echinopsii.ariane.community.messaging.common.MomAkkaService;
-import net.echinopsii.ariane.community.messaging.common.MomAkkaSupervisor;
-import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
+import net.echinopsii.ariane.community.messaging.api.MomLogger;
+import net.echinopsii.ariane.community.messaging.common.*;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -50,6 +49,18 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         return MomAkkaSupervisor.createNewSupervisedService(
                 sup, MsgRequestActor.props(((Client) client), requestCB),
                 source + "_msgWorker"
+        );
+    }
+
+    private static ActorRef createRequestRouter(String source, MomClient client, AppMsgWorker requestCB, ActorRef supervisor) {
+        Props routeeProps = MsgRequestActor.props(((Client) client), requestCB);
+        String routeeNamePrefix = source + "_msgWorker";
+        ActorRef sup = supervisor;
+        if (sup == null) sup = ((Client)client).getMainSupervisor();
+        return MomAkkaSupervisor.createNewSupervisedService(
+                sup,
+                MomAkkaRequestRouter.props(routeeProps, routeeNamePrefix, ((Client) client).getNbRouteesPerService()),
+                source + "_router"
         );
     }
 
@@ -174,7 +185,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         MomMsgGroupServiceMgr msgGroupServiceMgr = null;
 
         if (connection != null && !connection.isClosed()) {
-            requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), requestCB, null);
+            requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), requestCB, null);
             consumer = ServiceFactory.createConsumer(source, requestActor, connection);
             consumer.start();
             msgGroupServiceMgr = ServiceFactory.createMsgGroupServiceManager(source, requestCB, super.getMomClient());
@@ -194,7 +205,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         MomConsumer consumer  = null;
 
         if (connection != null && !connection.isClosed()) {
-            requestActor = ServiceFactory.createRequestActor(source, super.getMomClient(), requestCB, null);
+            requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), requestCB, null);
             consumer = ServiceFactory.createConsumer(source, requestActor, connection);
             consumer.start();
 
@@ -223,7 +234,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
 
     @Override
     public MomAkkaService subscriberService(String source, String selector, AppMsgWorker feedCB) {
-        MomAkkaService ret    = null;
+        MomAkkaService ret = null;
         ActorRef    subsActor ;
         MomConsumer consumer  ;
         final Connection connection = ((Client)super.getMomClient()).getConnection();
