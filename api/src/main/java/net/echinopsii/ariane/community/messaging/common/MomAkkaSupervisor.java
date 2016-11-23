@@ -70,7 +70,7 @@ public class MomAkkaSupervisor extends UntypedActor {
         });
     }
 
-    public ActorRef actorOf(Props props, String name) {
+    private ActorRef actorOf(Props props, String name) {
         return getContext().actorOf(props, name);
     }
 
@@ -88,14 +88,6 @@ public class MomAkkaSupervisor extends UntypedActor {
             final Terminated t = (Terminated) message;
             if (willStopSoon) log.debug("Actor " + t.getActor().path().name() + " is terminated.");
             else log.warn("Actor " + t.getActor().path().name() + " is terminated.");
-        } else if (message instanceof DeadLetter) {
-            final DeadLetter d = (DeadLetter) message;
-            for (ActorRef each : getContext().getChildren())
-                if (each.equals(d.recipient())) {
-                    if (willStopSoon) log.debug("DeadLetter " + d.message().toString() + " received. Recipient was " + d.recipient().path().name() + " .");
-                    else log.warn("DeadLetter " + d.message().toString() + " received. Recipient was " + d.recipient().path().name() + " .");
-                    break;
-                }
         } else if (message instanceof MomAkkaNewActorReq) {
             final MomAkkaNewActorReq req = (MomAkkaNewActorReq) message;
 
