@@ -22,19 +22,20 @@ package net.echinopsii.ariane.community.messaging.rabbitmq;
 import akka.actor.ActorRef;
 import akka.actor.PoisonPill;
 import akka.actor.Props;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.QueueingConsumer;
+import com.rabbitmq.client.*;
 import net.echinopsii.ariane.community.messaging.api.*;
+import net.echinopsii.ariane.community.messaging.api.MomLogger;
 import net.echinopsii.ariane.community.messaging.common.*;
 import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 
 public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
 
     private static final Logger log = MomLoggerFactory.getLogger(ServiceFactory.class);
+    private static MsgTranslator translator = new MsgTranslator();
 
     public ServiceFactory(Client client) {
         super(client);
@@ -61,13 +62,14 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         );
     }
 
-    private static MomConsumer createConsumer(final String source, final Channel channel, final ActorRef runnableReqActor) {
+    private static MomConsumer createConsumer(final String source, final Channel channel, final ActorRef runnableReqActor, final boolean isMsgDebugOnTimeout) {
         return new MomConsumer() {
             private boolean isRunning = false;
 
             @Override
             public void run() {
                 try {
+                    Map<String, Object> finalMessage = null;
                     channel.queueDeclare(source, false, false, true, null);
 
                     QueueingConsumer consumer = new QueueingConsumer(channel);
@@ -77,7 +79,17 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                     while (isRunning) {
                         try {
                             QueueingConsumer.Delivery delivery = consumer.nextDelivery(10);
-                            if (delivery!=null && isRunning) runnableReqActor.tell(delivery, null);
+                            if (delivery!=null && isRunning) {
+                                finalMessage = translator.decode(new Message().setEnvelope(delivery.getEnvelope()).
+                                        setProperties(delivery.getProperties()).
+                                        setBody(delivery.getBody()));
+                                if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE) && isMsgDebugOnTimeout)
+                                    ((MomLogger)log).setTraceLevel(true);
+                                ((MomLogger)log).traceMessage("MomConsumer(" + source + ").run", finalMessage);
+                                runnableReqActor.tell(delivery, null);
+                                if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE) && isMsgDebugOnTimeout)
+                                    ((MomLogger)log).setTraceLevel(false);
+                            }
                         } catch (InterruptedException e) {
                             // no message
                         }
@@ -135,7 +147,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                     runnableReqActor = ServiceFactory.createRequestActor(sessionSource, client, channel, requestCB, null);
                 }
                 msgGroupActorRegistry.put(groupID, runnableReqActor);
-                msgGroupConsumersRegistry.put(groupID, ServiceFactory.createConsumer(sessionSource, channel, runnableReqActor));
+                msgGroupConsumersRegistry.put(groupID, ServiceFactory.createConsumer(sessionSource, channel, runnableReqActor, client.isMsgDebugOnTimeout()));
                 msgGroupConsumersRegistry.get(groupID).start();
             }
 
@@ -181,7 +193,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 Channel channel = connection.createChannel();
                 channel.basicQos(1);
                 requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), channel, requestCB, null);
-                consumer = ServiceFactory.createConsumer(source, channel, requestActor);
+                consumer = ServiceFactory.createConsumer(source, channel, requestActor, super.getMomClient().isMsgDebugOnTimeout());
                 msgGroupMgr = ServiceFactory.createMsgGroupServiceManager(source, channel, requestCB, super.getMomClient());
                 consumer.start();
                 ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient((Client) super.getMomClient()).setMsgGroupServiceMgr(msgGroupMgr);
@@ -215,7 +227,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 Channel channel = connection.createChannel();
                 channel.basicQos(1);
                 requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), channel, requestCB, null);
-                consumer = ServiceFactory.createConsumer(source, channel, requestActor);
+                consumer = ServiceFactory.createConsumer(source, channel, requestActor, super.getMomClient().isMsgDebugOnTimeout());
                 consumer.start();
 
                 ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient(((Client) super.getMomClient()));

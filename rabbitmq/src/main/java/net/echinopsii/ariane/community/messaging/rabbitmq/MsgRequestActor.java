@@ -24,11 +24,17 @@ import akka.actor.UntypedActor;
 import akka.japi.Creator;
 import com.rabbitmq.client.*;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.api.MomLogger;
+import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
+import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsRequestActor;
+import org.slf4j.Logger;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class MsgRequestActor extends MsgAkkaAbsRequestActor {
+    private static final Logger log = MomLoggerFactory.getLogger(MsgRequestActor.class);
 
     private Channel      channel     = null;
 
@@ -56,9 +62,13 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
             byte[] body = ((QueueingConsumer.Delivery)message).getBody();
 
             Map<String, Object> finalMessage = ((MsgTranslator)super.getTranslator()).decode(new Message().setEnvelope(envelope).
-                                                                 setProperties(properties).
-                                                                 setBody(body));
-
+                    setProperties(properties).
+                    setBody(body));
+            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) {
+                if (super.getClient().isMsgDebugOnTimeout()) ((MomLogger)log).setTraceLevel(true);
+                else finalMessage.remove(MomMsgTranslator.MSG_TRACE);
+            }
+            ((MomLogger)log).traceMessage("MsgRequestActor.onReceive - in", finalMessage);
             Map<String, Object> reply = super.getMsgWorker().apply(finalMessage);
             if (properties.getReplyTo()!=null && properties.getCorrelationId()!=null && reply!=null) {
                 reply.put(MsgTranslator.MSG_CORRELATION_ID, properties.getCorrelationId());
@@ -69,6 +79,8 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                 channel.basicPublish("", replyTo, (AMQP.BasicProperties) replyMessage.getProperties(), replyMessage.getBody());
             }
             channel.basicAck(((QueueingConsumer.Delivery)message).getEnvelope().getDeliveryTag(), false);
+            ((MomLogger)log).traceMessage("MsgRequestActor.onReceive - out", finalMessage);
+            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
         } else
             unhandled(message);
     }
