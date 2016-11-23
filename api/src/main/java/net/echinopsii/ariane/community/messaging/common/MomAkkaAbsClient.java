@@ -96,18 +96,22 @@ public abstract class MomAkkaAbsClient implements MomClient {
         this.clientID = id;
     }
 
+    @Override
     public boolean isMsgDebugOnTimeout() {
         return msgDebugOnTimeout;
     }
 
+    @Override
     public void setMsgDebugOnTimeout(boolean msgDebugOnTimeout) {
         this.msgDebugOnTimeout = msgDebugOnTimeout;
     }
 
+    @Override
     public int getNbRouteesPerService() {
         return nbRouteesPerService;
     }
 
+    @Override
     public void setNbRouteesPerService(int nbRouteesPerService) {
         this.nbRouteesPerService = nbRouteesPerService;
     }

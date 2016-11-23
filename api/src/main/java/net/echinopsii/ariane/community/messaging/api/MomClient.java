@@ -63,6 +63,15 @@ public interface MomClient {
     Object getConnection();
     boolean isConnected();
     MomRequestExecutor createRequestExecutor();
+
+    boolean isMsgDebugOnTimeout();
+
+    void setMsgDebugOnTimeout(boolean msgDebugOnTimeout);
+
+    int getNbRouteesPerService();
+
+    void setNbRouteesPerService(int nbRouteesPerService);
+
     MomServiceFactory getServiceFactory();
 
     void openMsgGroupRequest(String groupID);
