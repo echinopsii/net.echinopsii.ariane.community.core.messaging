@@ -24,7 +24,10 @@ import java.util.Dictionary;
 import java.util.Properties;
 
 public interface MomClient {
-    String MOM_CLI  = "mom_cli.impl";
+    String MOM_CLI                        = "mom_cli.impl";
+    String MOM_CLI_MSG_DEBUG_ON_TIMEOUT   = "mom_cli.msg_debug_on_timeout";
+    String MOM_CLI_ROUTEES_NB_PER_SERVICE = "mom_cli.nb_routees_per_service";
+
     String MOM_HOST = "mom_host.fqdn";
     String MOM_PORT = "mom_host.port";
     String MOM_USER = "mom_host.user";

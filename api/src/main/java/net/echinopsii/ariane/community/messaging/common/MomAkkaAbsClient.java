@@ -37,6 +37,9 @@ public abstract class MomAkkaAbsClient implements MomClient {
     private ActorRef mainSupervisor = null;
     private String      clientID    = null;
 
+    private boolean msgDebugOnTimeout = false;
+    private int nbRouteesPerService = 5;
+
     private MomServiceFactory serviceFactory ;
     private List<MomRequestExecutor> requestExecutors = new ArrayList<MomRequestExecutor>();
 
@@ -91,6 +94,22 @@ public abstract class MomAkkaAbsClient implements MomClient {
 
     public void setClientID(String id) {
         this.clientID = id;
+    }
+
+    public boolean isMsgDebugOnTimeout() {
+        return msgDebugOnTimeout;
+    }
+
+    public void setMsgDebugOnTimeout(boolean msgDebugOnTimeout) {
+        this.msgDebugOnTimeout = msgDebugOnTimeout;
+    }
+
+    public int getNbRouteesPerService() {
+        return nbRouteesPerService;
+    }
+
+    public void setNbRouteesPerService(int nbRouteesPerService) {
+        this.nbRouteesPerService = nbRouteesPerService;
     }
 
     @Override
@@ -163,7 +182,10 @@ public abstract class MomAkkaAbsClient implements MomClient {
             for (MomService service : ((MomAkkaAbsServiceFactory) this.getServiceFactory()).getServices())
                 if (service.getMsgGroupServiceMgr() != null)
                     service.getMsgGroupServiceMgr().closeMsgGroupService(groupID);
-            if (msgGroupSupervisor!=null) this.system.stop(msgGroupSupervisor);
+            if (msgGroupSupervisor!=null) {
+                this.system.stop(msgGroupSupervisor);
+                this.msgGroupSupervisors.remove(groupID);
+            }
         }
     }
 }
