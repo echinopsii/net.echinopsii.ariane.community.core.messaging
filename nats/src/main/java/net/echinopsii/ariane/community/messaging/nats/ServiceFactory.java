@@ -64,9 +64,10 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         );
     }
 
-    private static MomConsumer createConsumer(final String source, final ActorRef runnableReqActor, final Connection connection) {
+    private static MomConsumer createConsumer(final String source, final ActorRef runnableReqActor, final MomClient client) {
         return new MomConsumer() {
             private boolean isRunning = false;
+            private Connection connection = ((Client)client).getConnection();
 
             @Override
             public void run() {
@@ -74,22 +75,27 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 try {
                     subs = connection.subscribeSync(source);
                     isRunning = true;
+                    Map<String, Object> finalMessage;
 
                     while (isRunning) {
-                        Map<String, Object> finalMessage = null;
+                        finalMessage = null;
                         try {
                             Message msg = subs.nextMessage(10);
-                            finalMessage = translator.decode(msg);
-                            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(true);
-                            ((MomLogger)log).traceMessage("MomConsumer(" + source + ").run", finalMessage);
-                            if (msg!=null && isRunning) runnableReqActor.tell(msg, null);
-                            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
+                            if (msg!=null && isRunning) {
+                                finalMessage = translator.decode(msg);
+                                if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE) && client.isMsgDebugOnTimeout())
+                                    ((MomLogger)log).setTraceLevel(true);
+                                ((MomLogger)log).traceMessage("MomConsumer(" + source + ").run", finalMessage);
+                                runnableReqActor.tell(msg, null);
+                            }
+                            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE) && client.isMsgDebugOnTimeout())
+                                ((MomLogger)log).setTraceLevel(false);
                         } catch (TimeoutException e) {
-                            if (finalMessage!=null &&
+                            if (finalMessage!=null && client.isMsgDebugOnTimeout() &&
                                     ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
                             log.debug("no message found during last 10 ms");
                         } catch (IllegalStateException | IOException | InterruptedException e) {
-                            if (finalMessage!=null &&
+                            if (finalMessage!=null && client.isMsgDebugOnTimeout() &&
                                     ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
                             if (isRunning) log.error("[source: " + source + "]" + e.getMessage());
                         }
@@ -142,7 +148,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                     runnableReqActor = ServiceFactory.createRequestActor(sessionSource, client, requestCB, ((Client)client).getMainSupervisor());
                 }
                 msgGroupActorRegistry.put(groupID, runnableReqActor);
-                msgGroupConsumersRegistry.put(groupID, ServiceFactory.createConsumer(sessionSource, runnableReqActor, connection));
+                msgGroupConsumersRegistry.put(groupID, ServiceFactory.createConsumer(sessionSource, runnableReqActor, client));
                 msgGroupConsumersRegistry.get(groupID).start();
             }
 
@@ -186,7 +192,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
 
         if (connection != null && !connection.isClosed()) {
             requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), requestCB, null);
-            consumer = ServiceFactory.createConsumer(source, requestActor, connection);
+            consumer = ServiceFactory.createConsumer(source, requestActor, super.getMomClient());
             consumer.start();
             msgGroupServiceMgr = ServiceFactory.createMsgGroupServiceManager(source, requestCB, super.getMomClient());
             ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient((Client) super.getMomClient()).
@@ -206,7 +212,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
 
         if (connection != null && !connection.isClosed()) {
             requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), requestCB, null);
-            consumer = ServiceFactory.createConsumer(source, requestActor, connection);
+            consumer = ServiceFactory.createConsumer(source, requestActor, super.getMomClient());
             consumer.start();
 
             ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient(
@@ -244,7 +250,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             subsActor = ((Client)super.getMomClient()).getActorSystem().actorOf(
                     MsgSubsActor.props(feedCB), subject + "_msgWorker"
             );
-            consumer = ServiceFactory.createConsumer(subject, subsActor, connection);
+            consumer = ServiceFactory.createConsumer(subject, subsActor, super.getMomClient());
             consumer.start();
 
             ret = new MomAkkaService().setMsgWorker(subsActor).setConsumer(consumer).setClient(
