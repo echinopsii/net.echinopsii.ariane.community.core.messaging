@@ -50,16 +50,20 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         );
     }
 
-    private static ActorRef createRequestRouter(String source, MomClient client, Channel channel, AppMsgWorker requestCB, ActorRef supervisor) {
+    private static ActorRef createRequestRouter(String source, MomClient client, Channel channel, AppMsgWorker requestCB, ActorRef supervisor, int nbRoutees) {
         Props routeeProps = MsgRequestActor.props(((Client) client), channel, requestCB);
         String routeeNamePrefix = source + "_msgWorker";
         ActorRef sup = supervisor;
         if (sup == null) sup = ((Client)client).getMainSupervisor();
         return MomAkkaSupervisor.createNewSupervisedService(
                 sup,
-                MomAkkaRequestRouter.props(routeeProps, routeeNamePrefix, ((Client) client).getNbRouteesPerService()),
+                MomAkkaRequestRouter.props(routeeProps, routeeNamePrefix, nbRoutees),
                 source + "_router"
         );
+    }
+
+    private static ActorRef createRequestRouter(String source, MomClient client, Channel channel, AppMsgWorker requestCB, ActorRef supervisor) {
+        return createRequestRouter(source, client, channel, requestCB, supervisor, ((Client) client).getNbRouteesPerService());
     }
 
     private static MomConsumer createConsumer(final String source, final Channel channel, final ActorRef runnableReqActor, final boolean isMsgDebugOnTimeout) {
@@ -141,10 +145,10 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 final String sessionSource = groupID + "-" + source;
                 ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
                 ActorRef runnableReqActor = null;
-                if (msgGroupSupervisor!=null) runnableReqActor = ServiceFactory.createRequestActor(groupID, client, channel, requestCB, msgGroupSupervisor);
+                if (msgGroupSupervisor!=null) runnableReqActor = ServiceFactory.createRequestRouter(groupID, client, channel, requestCB, msgGroupSupervisor, 2);
                 else {
                     log.warn("No supervisor found for group " + groupID + ". Use main mom supervisor.");
-                    runnableReqActor = ServiceFactory.createRequestActor(sessionSource, client, channel, requestCB, null);
+                    runnableReqActor = ServiceFactory.createRequestRouter(sessionSource, client, channel, requestCB, null, 2);
                 }
                 msgGroupActorRegistry.put(groupID, runnableReqActor);
                 msgGroupConsumersRegistry.put(groupID, ServiceFactory.createConsumer(sessionSource, channel, runnableReqActor, client.isMsgDebugOnTimeout()));
