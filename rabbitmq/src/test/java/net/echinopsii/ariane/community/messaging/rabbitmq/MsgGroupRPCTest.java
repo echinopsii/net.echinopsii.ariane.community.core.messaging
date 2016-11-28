@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 import static junit.framework.TestCase.assertTrue;
 
@@ -159,14 +160,14 @@ public class MsgGroupRPCTest {
         }
     }
 
-    private void openSession() {
+    private void openSession() throws TimeoutException {
         Map<String, Object> request = new HashMap<String, Object>();
         request.put("OP", "OPEN_SESSION");
         String sessionID = (String) client.createRequestExecutor().RPC(request, "SESSION_SUBJECT", sessionRequestWorker).get("SESSION_ID");
         client.openMsgGroupRequest(sessionID);
     }
 
-    private void closeSession() {
+    private void closeSession() throws TimeoutException {
         String sessionID = client.getCurrentMsgGroup();
         client.closeMsgGroupRequest(sessionID);
         Map<String, Object> request = new HashMap<String, Object>();
@@ -176,7 +177,7 @@ public class MsgGroupRPCTest {
     }
 
     @Test
-    public void testGroupRPC() throws InterruptedException {
+    public void testGroupRPC() throws InterruptedException, TimeoutException {
         if (client!=null) {
             openSession();
 

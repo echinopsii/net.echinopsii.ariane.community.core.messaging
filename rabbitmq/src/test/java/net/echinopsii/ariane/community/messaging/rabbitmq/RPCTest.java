@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.TimeoutException;
 
 import static junit.framework.TestCase.assertTrue;
 
@@ -111,7 +112,7 @@ public class RPCTest {
     }
 
     @Test
-    public void testRPC() throws InterruptedException {
+    public void testRPC() throws InterruptedException, TimeoutException {
         if (client!=null) {
             TestRequestWorker requestWorker = new TestRequestWorker();
             TestReplyWorker   replyWorker   = new TestReplyWorker();

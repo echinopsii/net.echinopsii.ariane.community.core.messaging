@@ -28,6 +28,7 @@ import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecuto
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.TimeoutException;
 
 public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
 
@@ -77,7 +78,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     }
 
     @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) {
+    public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) throws TimeoutException {
         Map<String, Object> response = null;
         try {
             String groupID = super.getMomClient().getCurrentMsgGroup();
