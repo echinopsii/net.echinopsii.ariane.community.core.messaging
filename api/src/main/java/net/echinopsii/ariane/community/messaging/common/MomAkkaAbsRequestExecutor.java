@@ -26,6 +26,7 @@ import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 public abstract class MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
 
@@ -40,7 +41,7 @@ public abstract class MomAkkaAbsRequestExecutor implements MomRequestExecutor<St
     }
 
     @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, AppMsgWorker answerCB) {
+    public Map<String, Object> RPC(Map<String, Object> request, String destination, AppMsgWorker answerCB) throws TimeoutException {
         return RPC(request, destination, null, answerCB);
     }
 }

@@ -27,6 +27,8 @@ public interface MomClient {
     String MOM_CLI                        = "mom_cli.impl";
     String MOM_CLI_MSG_DEBUG_ON_TIMEOUT   = "mom_cli.msg_debug_on_timeout";
     String MOM_CLI_ROUTEES_NB_PER_SERVICE = "mom_cli.nb_routees_per_service";
+    String MOM_CLI_RPC_TIMEOUT            = "mom_cli.rpc_timeout";
+    String MOM_CLI_RPC_RETRY              = "mom_cli.rpc_retry";
 
     String MOM_HOST = "mom_host.fqdn";
     String MOM_PORT = "mom_host.port";
@@ -65,12 +67,16 @@ public interface MomClient {
     MomRequestExecutor createRequestExecutor();
 
     boolean isMsgDebugOnTimeout();
-
     void setMsgDebugOnTimeout(boolean msgDebugOnTimeout);
 
     int getNbRouteesPerService();
-
     void setNbRouteesPerService(int nbRouteesPerService);
+
+    long getRPCTimout();
+    void setRPCTimout(long rpcTimout);
+
+    int getRPCRetry();
+    void setRPCRetry(int rpcRetry);
 
     MomServiceFactory getServiceFactory();
 

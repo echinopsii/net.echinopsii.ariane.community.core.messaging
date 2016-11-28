@@ -40,6 +40,9 @@ public abstract class MomAkkaAbsClient implements MomClient {
     private boolean msgDebugOnTimeout = false;
     private int nbRouteesPerService = 5;
 
+    private long rpcTimeout = 10;
+    private int rpcRetry = 3;
+
     private MomServiceFactory serviceFactory ;
     private List<MomRequestExecutor> requestExecutors = new ArrayList<MomRequestExecutor>();
 
@@ -114,6 +117,27 @@ public abstract class MomAkkaAbsClient implements MomClient {
     @Override
     public void setNbRouteesPerService(int nbRouteesPerService) {
         this.nbRouteesPerService = nbRouteesPerService;
+    }
+
+    @Override
+    public long getRPCTimout() {
+        return this.rpcTimeout;
+    }
+
+    @Override
+    public void setRPCTimout(long rpcTimout) {
+        if (rpcTimout > 0) this.rpcTimeout = rpcTimout;
+        else this.rpcTimeout = -1L;
+    }
+
+    @Override
+    public int getRPCRetry() {
+        return this.rpcRetry;
+    }
+
+    @Override
+    public void setRPCRetry(int rpcRetry) {
+        this.rpcRetry = rpcRetry;
     }
 
     @Override

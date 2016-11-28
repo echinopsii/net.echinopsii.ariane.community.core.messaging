@@ -20,6 +20,7 @@
 package net.echinopsii.ariane.community.messaging.api;
 
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 public interface MomRequestExecutor<Q, C extends AppMsgWorker> {
 
@@ -38,7 +39,7 @@ public interface MomRequestExecutor<Q, C extends AppMsgWorker> {
      * @param answerCB the callback object to treat the answer
      * @return the answer message
      */
-    public Map<String, Object> RPC(Map<String, Object> request, Q destination, C answerCB);
+    public Map<String, Object> RPC(Map<String, Object> request, Q destination, C answerCB) throws TimeoutException;
 
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB);
+    public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) throws TimeoutException;
 }

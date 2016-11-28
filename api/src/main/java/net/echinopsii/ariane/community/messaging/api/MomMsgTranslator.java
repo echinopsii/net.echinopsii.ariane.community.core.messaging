@@ -35,6 +35,7 @@ public interface MomMsgTranslator<M> {
     String MSG_TYPE          = "MSG_TYPE";
     String MSG_BODY          = "MSG_BODY";
     String MSG_PROPERTIES    = "MSG_PROPERTIES";
+    String MSG_RETRY_COUNT   = "MSG_RETRY_COUNT";
     String MSG_TRACE         = "MSG_TRACE";
 
     String MSG_RC            = "RC";
