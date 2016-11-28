@@ -23,30 +23,26 @@ import io.nats.client.Connection;
 import io.nats.client.Message;
 import io.nats.client.SyncSubscription;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecutor;
 import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
     private static final Logger log = MomLoggerFactory.getLogger(RequestExecutor.class);
 
     private HashMap<String, HashMap<String, SyncSubscription>> sessionsRPCSubs = new HashMap<>();
-    private long rpc_timeout = 0;
 
     public RequestExecutor(Client client) throws IOException {
         super(client);
-    }
-
-    public RequestExecutor(Client client, long rpc_timeout) throws IOException {
-        super(client);
-        this.rpc_timeout = rpc_timeout;
     }
 
     @Override
@@ -64,7 +60,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     }
 
     @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) {
+    public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) throws TimeoutException {
         Map<String, Object> response = null;
         Message message = new MsgTranslator().encode(request);
 
@@ -81,9 +77,15 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             Message msgResponse = null;
             if (replySource==null) {
                 msgResponse = ((Connection) super.getMomClient().getConnection()).request(
-                        message.getSubject(), message.getData()
+                        message.getSubject(), message.getData(), super.getMomClient().getRPCTimout(), TimeUnit.SECONDS
                 );
             } else {
+                String corrId;
+                synchronized (UUID.class) {
+                    corrId = UUID.randomUUID().toString();
+                }
+                request.put(MsgTranslator.MSG_CORRELATION_ID, corrId);
+
                 SyncSubscription subs;
                 if (groupID!=null) {
                     if (sessionsRPCSubs.get(groupID) != null) {
@@ -101,19 +103,47 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                 } else subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(replySource);
 
                 ((Connection) super.getMomClient().getConnection()).publish(message);
-                long exit_count = 1;
-                if (this.rpc_timeout > 0) exit_count = this.rpc_timeout * 100;
-                while(msgResponse==null && exit_count > 0) {
+                long rpcTimeout = super.getMomClient().getRPCTimout() * 1000000000;
+                long beginWaitingAnswer = System.currentTimeMillis();
+                while(msgResponse==null && rpcTimeout >= 0) {
                     try {
-                        msgResponse = subs.nextMessage(10);
-                        if (this.rpc_timeout > 0) exit_count--;
-                    } catch (InterruptedException | TimeoutException ex ) {
-                        log.debug("Thread interrupted... Replay");
+                        msgResponse = subs.nextMessage(rpcTimeout, TimeUnit.NANOSECONDS);
+                        String responseCorrID = (String) new MsgTranslator().decode(msgResponse).get(MsgTranslator.MSG_CORRELATION_ID);
+                        if (responseCorrID !=null && !responseCorrID.equals(corrId)) {
+                            log.warn("Response discarded ( " + responseCorrID + " ) ...");
+                            msgResponse = null;
+                        }
+                    } catch (InterruptedException | TimeoutException ex) {
+                        log.debug("Thread interrupted while waiting for RPC answer...");
+                    } finally {
+                        if (super.getMomClient().getRPCTimout()>0)
+                            rpcTimeout = super.getMomClient().getRPCTimout()*1000000000 - (System.currentTimeMillis()-beginWaitingAnswer);
+                        else rpcTimeout = 0;
                     }
                 }
                 if (groupID==null) subs.close();
             }
-            response = new MsgTranslator().decode(msgResponse);
+            if (msgResponse!=null) response = new MsgTranslator().decode(msgResponse);
+            else {
+                log.warn("No response returned from request on " + destination + " queue after " +
+                        super.getMomClient().getRPCTimout() + " sec...");
+                if (request.containsKey(MomMsgTranslator.MSG_RETRY_COUNT)) {
+                    int retryCount = (int)request.get(MomMsgTranslator.MSG_RETRY_COUNT);
+                    if ((retryCount - super.getMomClient().getRPCRetry()) > 0) {
+                        request.put(MomMsgTranslator.MSG_RETRY_COUNT, retryCount++);
+                        log.warn("Retry (" + request.get(MomMsgTranslator.MSG_RETRY_COUNT) + ")");
+                        return this.RPC(request, destination, replySource, answerCB);
+                    } else
+                        throw new TimeoutException(
+                                "No response returned from request on " + destination + " queue after " +
+                                        super.getMomClient().getRPCTimout() + " sec..."
+                        );
+                } else {
+                    request.put(MomMsgTranslator.MSG_RETRY_COUNT, 1);
+                    log.warn("Retry (" + request.get(MomMsgTranslator.MSG_RETRY_COUNT) + ")");
+                    return this.RPC(request, destination, replySource, answerCB);
+                }
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
