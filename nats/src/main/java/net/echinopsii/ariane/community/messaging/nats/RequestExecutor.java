@@ -65,7 +65,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         Map<String, Object> response = null;
 
         String groupID = super.getMomClient().getCurrentMsgGroup();
-        if (groupID!=null) {
+        if (groupID!=null && !destination.contains(groupID)) {
             destination = groupID + "-" + destination;
             if (replySource==null) replySource = destination + "-RET";
         }
@@ -146,15 +146,15 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                         super.getMomClient().getRPCTimout() + " sec...");
                 if (request.containsKey(MomMsgTranslator.MSG_RETRY_COUNT)) {
                     int retryCount = (int)request.get(MomMsgTranslator.MSG_RETRY_COUNT);
-                    if ((retryCount - super.getMomClient().getRPCRetry()) > 0) {
-                        request.put(MomMsgTranslator.MSG_RETRY_COUNT, retryCount++);
+                    if ((super.getMomClient().getRPCRetry()-retryCount) > 0) {
+                        request.put(MomMsgTranslator.MSG_RETRY_COUNT, retryCount+1);
                         destinationTrace.put(destination, true);
                         log.warn("Retry (" + request.get(MomMsgTranslator.MSG_RETRY_COUNT) + ")");
                         return this.RPC(request, destination, replySource, answerCB);
                     } else
                         throw new TimeoutException(
                                 "No response returned from request on " + destination + " queue after " +
-                                        super.getMomClient().getRPCTimout() + " sec..."
+                                        super.getMomClient().getRPCTimout() + "*" + super.getMomClient().getRPCRetry() + " sec..."
                         );
                 } else {
                     request.put(MomMsgTranslator.MSG_RETRY_COUNT, 1);
