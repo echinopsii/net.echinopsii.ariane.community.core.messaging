@@ -145,7 +145,8 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 final String sessionSource = groupID + "-" + source;
                 ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
                 ActorRef runnableReqActor = null;
-                if (msgGroupSupervisor!=null) runnableReqActor = ServiceFactory.createRequestRouter(groupID, client, channel, requestCB, msgGroupSupervisor, 2);
+                if (msgGroupSupervisor!=null)
+                    runnableReqActor = ServiceFactory.createRequestRouter(source, client, channel, requestCB, msgGroupSupervisor, 2);
                 else {
                     log.warn("No supervisor found for group " + groupID + ". Use main mom supervisor.");
                     runnableReqActor = ServiceFactory.createRequestRouter(sessionSource, client, channel, requestCB, null, 2);
