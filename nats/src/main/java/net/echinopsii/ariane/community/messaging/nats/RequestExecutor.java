@@ -104,20 +104,22 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
 
                 ((Connection) super.getMomClient().getConnection()).publish(message);
                 long rpcTimeout = super.getMomClient().getRPCTimout() * 1000000000;
-                long beginWaitingAnswer = System.currentTimeMillis();
+                long beginWaitingAnswer = System.nanoTime();
                 while(msgResponse==null && rpcTimeout >= 0) {
                     try {
                         msgResponse = subs.nextMessage(rpcTimeout, TimeUnit.NANOSECONDS);
-                        String responseCorrID = (String) new MsgTranslator().decode(msgResponse).get(MsgTranslator.MSG_CORRELATION_ID);
-                        if (responseCorrID !=null && !responseCorrID.equals(corrId)) {
-                            log.warn("Response discarded ( " + responseCorrID + " ) ...");
-                            msgResponse = null;
+                        if (msgResponse!=null) {
+                            String responseCorrID = (String) new MsgTranslator().decode(msgResponse).get(MsgTranslator.MSG_CORRELATION_ID);
+                            if (responseCorrID != null && !responseCorrID.equals(corrId)) {
+                                log.warn("Response discarded ( " + responseCorrID + " ) ...");
+                                msgResponse = null;
+                            }
                         }
                     } catch (InterruptedException | TimeoutException ex) {
                         log.debug("Thread interrupted while waiting for RPC answer...");
                     } finally {
                         if (super.getMomClient().getRPCTimout()>0)
-                            rpcTimeout = super.getMomClient().getRPCTimout()*1000000000 - (System.currentTimeMillis()-beginWaitingAnswer);
+                            rpcTimeout = super.getMomClient().getRPCTimout()*1000000000 - (System.nanoTime()-beginWaitingAnswer);
                         else rpcTimeout = 0;
                     }
                 }
