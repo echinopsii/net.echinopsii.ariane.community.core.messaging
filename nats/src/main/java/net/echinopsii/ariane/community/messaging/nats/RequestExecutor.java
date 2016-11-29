@@ -131,6 +131,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                 }
                 if (groupID==null) subs.close();
             }
+            
             if (msgResponse!=null) {
                 long endWaitingAnswer = System.nanoTime();
                 long rpcTime = endWaitingAnswer - beginWaitingAnswer;
