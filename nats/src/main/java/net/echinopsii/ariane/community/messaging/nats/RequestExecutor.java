@@ -140,8 +140,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                     log.warn("Slow RPC time () on request to queue " + destination);
                 } else  destinationTrace.put(destination, false);
                 response = new MsgTranslator().decode(msgResponse);
-            }
-            else {
+            } else {
                 log.warn("No response returned from request on " + destination + " queue after " +
                         super.getMomClient().getRPCTimout() + " sec...");
                 if (request.containsKey(MomMsgTranslator.MSG_RETRY_COUNT)) {
