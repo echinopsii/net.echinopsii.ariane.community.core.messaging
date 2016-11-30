@@ -166,7 +166,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             log.debug("RPC time : " + rpcTime);
             if (rpcTime > super.getMomClient().getRPCTimout()*1000000000*3/5) {
                 destinationTrace.put(destination, true);
-                log.warn("Slow RPC time () on request to queue " + destination);
+                log.warn("Slow RPC time (" + rpcTime/1000000000 + ") on request to queue " + destination);
             } else  destinationTrace.put(destination, false);
             response = new MsgTranslator().decode(new Message().setEnvelope(delivery.getEnvelope()).
                     setProperties(delivery.getProperties()).
