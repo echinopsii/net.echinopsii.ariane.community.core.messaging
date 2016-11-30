@@ -164,7 +164,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             long endWaitingAnswer = System.nanoTime();
             long rpcTime = endWaitingAnswer - beginWaitingAnswer;
             log.debug("RPC time : " + rpcTime);
-            if (rpcTime > super.getMomClient().getRPCTimout()*1000000000*3/5) {
+            if (super.getMomClient().getRPCTimout()>0 && rpcTime > super.getMomClient().getRPCTimout()*1000000000*3/5) {
                 destinationTrace.put(destination, true);
                 log.warn("Slow RPC time (" + rpcTime/1000000000 + ") on request to queue " + destination);
             } else  destinationTrace.put(destination, false);
