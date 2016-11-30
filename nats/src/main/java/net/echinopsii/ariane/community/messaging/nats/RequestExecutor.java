@@ -82,6 +82,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             Message msgResponse = null;
             long beginWaitingAnswer = 0;
             if (replySource==null) {
+                beginWaitingAnswer = System.nanoTime();
                 msgResponse = ((Connection) super.getMomClient().getConnection()).request(
                         message.getSubject(), message.getData(), super.getMomClient().getRPCTimout(), TimeUnit.SECONDS
                 );
@@ -136,9 +137,9 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                 long endWaitingAnswer = System.nanoTime();
                 long rpcTime = endWaitingAnswer - beginWaitingAnswer;
                 log.debug("RPC time : " + rpcTime);
-                if (super.getMomClient().getRPCTimout()>0 && rpcTime > super.getMomClient().getRPCTimout()*1000000000*3/5) {
+                if (super.getMomClient().getRPCTimout()>0 && beginWaitingAnswer>0 && rpcTime > super.getMomClient().getRPCTimout()*1000000000*3/5) {
                     destinationTrace.put(destination, true);
-                    log.warn("Slow RPC time (" + rpcTime + ") on request to queue " + destination);
+                    log.warn("Slow RPC time (" + rpcTime/1000000000 + ") on request to queue " + destination);
                 } else  destinationTrace.put(destination, false);
                 response = new MsgTranslator().decode(msgResponse);
             } else {
