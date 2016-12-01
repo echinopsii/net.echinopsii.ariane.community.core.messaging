@@ -121,16 +121,21 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             }
 
             String corrId;
-            synchronized (UUID.class) {
-                corrId = UUID.randomUUID().toString();
-            }
-            request.put(MsgTranslator.MSG_CORRELATION_ID, corrId);
+            if (request.get(MsgTranslator.MSG_CORRELATION_ID)==null) {
+                synchronized (UUID.class) {
+                    corrId = UUID.randomUUID().toString();
+                }
+                request.put(MsgTranslator.MSG_CORRELATION_ID, corrId);
+            } else corrId = (String) request.get(MsgTranslator.MSG_CORRELATION_ID);
             request.put(MsgTranslator.MSG_REPLY_TO, replyQueueName);
+
             if (super.getMomClient().getClientID()!=null)
                 request.put(MomMsgTranslator.MSG_APPLICATION_ID, super.getMomClient().getClientID());
+
             if (destinationTrace.get(destination)) request.put(MomMsgTranslator.MSG_TRACE, true);
             else request.remove(MomMsgTranslator.MSG_TRACE);
 
+            if (destinationTrace.get(destination)) log.info("send request " + corrId);
             Message message = new MsgTranslator().encode(request);
             channel.basicPublish(RPC_EXCHANGE, destination, (com.rabbitmq.client.AMQP.BasicProperties) message.getProperties(), message.getBody());
 
@@ -149,6 +154,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                     if (super.getMomClient().getRPCTimout()>0)
                         rpcTimeout = (super.getMomClient().getRPCTimout()*1000000000 - (System.nanoTime()-beginWaitingAnswer))/1000000;
                     else rpcTimeout = 0;
+                    if (destinationTrace.get(destination)) log.info("rpcTimeout left: " + rpcTimeout);
                 }
             }
 
@@ -165,18 +171,17 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             long rpcTime = endWaitingAnswer - beginWaitingAnswer;
             log.debug("RPC time : " + rpcTime);
             if (super.getMomClient().getRPCTimout()>0 && beginWaitingAnswer>0 && rpcTime > super.getMomClient().getRPCTimout()*1000000000 * 3 / 5) {
-                destinationTrace.put(destination, true);
-                log.warn("Slow RPC time (" + rpcTime / 1000000000 + ") on request to queue " + destination);
+                log.debug("Slow RPC time (" + rpcTime / 1000000000 + ") on request to queue " + destination);
             } else  destinationTrace.put(destination, false);
             response = new MsgTranslator().decode(new Message().setEnvelope(delivery.getEnvelope()).
                     setProperties(delivery.getProperties()).
                     setBody(delivery.getBody()));
         } else {
-            log.warn("No response returned from request on " + destination + " queue after " +
-                    super.getMomClient().getRPCTimout() + " sec...");
             if (request.containsKey(MomMsgTranslator.MSG_RETRY_COUNT)) {
                 int retryCount = (int)request.get(MomMsgTranslator.MSG_RETRY_COUNT);
-                if ((super.getMomClient().getRPCRetry() - retryCount) > 0) {
+                log.warn("No response returned from request on " + destination + " queue after (" +
+                        super.getMomClient().getRPCTimout() + "*" + retryCount + 1 + ") sec...");
+                if ((super.getMomClient().getRPCRetry() - retryCount+1) > 0) {
                     request.put(MomMsgTranslator.MSG_RETRY_COUNT, retryCount+1);
                     destinationTrace.put(destination, true);
                     log.warn("Retry (" + request.get(MomMsgTranslator.MSG_RETRY_COUNT) + ")");
@@ -188,8 +193,6 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                     );
             } else {
                 request.put(MomMsgTranslator.MSG_RETRY_COUNT, 1);
-                destinationTrace.put(destination, true);
-                log.warn("Retry (" + request.get(MomMsgTranslator.MSG_RETRY_COUNT) + ")");
                 return this.RPC(request, destination, replySource, answerCB);
             }
         }

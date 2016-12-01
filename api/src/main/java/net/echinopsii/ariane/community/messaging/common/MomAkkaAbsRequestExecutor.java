@@ -24,7 +24,6 @@ import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
