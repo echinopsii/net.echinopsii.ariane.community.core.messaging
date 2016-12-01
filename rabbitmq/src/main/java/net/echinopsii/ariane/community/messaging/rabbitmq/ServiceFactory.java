@@ -41,17 +41,17 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         super(client);
     }
 
-    private static ActorRef createRequestActor(String source, MomClient client, Channel channel, AppMsgWorker requestCB, ActorRef supervisor) {
+    private static ActorRef createRequestActor(String source, MomClient client, Channel channel, AppMsgWorker requestCB, ActorRef supervisor, boolean cache) {
         ActorRef sup = supervisor;
         if (sup == null) sup = ((Client)client).getMainSupervisor();
         return MomAkkaSupervisor.createNewSupervisedService(
-                sup, MsgRequestActor.props(((Client) client), channel, requestCB),
+                sup, MsgRequestActor.props(((Client) client), channel, requestCB, cache),
                 source + "_msgWorker"
         );
     }
 
-    private static ActorRef createRequestRouter(String source, MomClient client, Channel channel, AppMsgWorker requestCB, ActorRef supervisor, int nbRoutees) {
-        Props routeeProps = MsgRequestActor.props(((Client) client), channel, requestCB);
+    private static ActorRef createRequestRouter(String source, MomClient client, Channel channel, AppMsgWorker requestCB, ActorRef supervisor, int nbRoutees, boolean cache) {
+        Props routeeProps = MsgRequestActor.props(((Client) client), channel, requestCB, cache);
         String routeeNamePrefix = source + "_msgWorker";
         ActorRef sup = supervisor;
         if (sup == null) sup = ((Client)client).getMainSupervisor();
@@ -62,8 +62,8 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         );
     }
 
-    private static ActorRef createRequestRouter(String source, MomClient client, Channel channel, AppMsgWorker requestCB, ActorRef supervisor) {
-        return createRequestRouter(source, client, channel, requestCB, supervisor, ((Client) client).getNbRouteesPerService());
+    private static ActorRef createRequestRouter(String source, MomClient client, Channel channel, AppMsgWorker requestCB, ActorRef supervisor, boolean cache) {
+        return createRequestRouter(source, client, channel, requestCB, supervisor, ((Client) client).getNbRouteesPerService(), cache);
     }
 
     private static MomConsumer createConsumer(final String source, final Channel channel, final ActorRef runnableReqActor, final boolean isMsgDebugOnTimeout) {
@@ -146,10 +146,10 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                 ActorRef msgGroupSupervisor = ((Client)client).getMsgGroupSupervisor(groupID);
                 ActorRef runnableReqActor = null;
                 if (msgGroupSupervisor!=null)
-                    runnableReqActor = ServiceFactory.createRequestRouter(source, client, channel, requestCB, msgGroupSupervisor, 2);
+                    runnableReqActor = ServiceFactory.createRequestRouter(source, client, channel, requestCB, msgGroupSupervisor, 2, true);
                 else {
                     log.warn("No supervisor found for group " + groupID + ". Use main mom supervisor.");
-                    runnableReqActor = ServiceFactory.createRequestRouter(sessionSource, client, channel, requestCB, null, 2);
+                    runnableReqActor = ServiceFactory.createRequestRouter(sessionSource, client, channel, requestCB, null, 2, true);
                 }
                 msgGroupActorRegistry.put(groupID, runnableReqActor);
                 msgGroupConsumersRegistry.put(groupID, ServiceFactory.createConsumer(sessionSource, channel, runnableReqActor, client.isMsgDebugOnTimeout()));
@@ -197,7 +197,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             try {
                 Channel channel = connection.createChannel();
                 channel.basicQos(1);
-                requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), channel, requestCB, null);
+                requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), channel, requestCB, null, true);
                 consumer = ServiceFactory.createConsumer(source, channel, requestActor, super.getMomClient().isMsgDebugOnTimeout());
                 msgGroupMgr = ServiceFactory.createMsgGroupServiceManager(source, channel, requestCB, super.getMomClient());
                 consumer.start();
@@ -231,7 +231,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             try {
                 Channel channel = connection.createChannel();
                 channel.basicQos(1);
-                requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), channel, requestCB, null);
+                requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), channel, requestCB, null, false);
                 consumer = ServiceFactory.createConsumer(source, channel, requestActor, super.getMomClient().isMsgDebugOnTimeout());
                 consumer.start();
 

@@ -23,18 +23,84 @@ import akka.actor.UntypedActor;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
+import org.slf4j.Logger;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public abstract class MsgAkkaAbsRequestActor extends UntypedActor {
+
+    private static final Logger log = MomLoggerFactory.getLogger(MsgAkkaAbsRequestActor.class);
 
     private MomMsgTranslator translator = null;
     private AppMsgWorker msgWorker   = null;
     private MomClient client      = null;
 
-    public MsgAkkaAbsRequestActor(MomClient mclient, AppMsgWorker worker, MomMsgTranslator translator_) {
+    private boolean isRunning;
+
+    private long replyCacheRetentionTime = 20*1000; // default 20 sec.
+    private Map<String, CachedReply> lastReplyCache;
+    private Thread cacheCleaner;
+
+    public class CachedReply {
+        long replyTime;
+        Map<String, Object> reply;
+
+        public CachedReply(long time, Map<String, Object> reply_) {
+            replyTime = time;
+            reply = reply_;
+        }
+    }
+
+    public void putReplyToCache(String corrID, Map<String, Object> reply) {
+        if (this.lastReplyCache!=null) {
+            CachedReply cachedReply = new CachedReply(System.nanoTime(), reply);
+            lastReplyCache.put(corrID, cachedReply);
+        }
+    }
+
+    public Map<String, Object> getReplyFromCache(String corrID) {
+        if (lastReplyCache!=null && lastReplyCache.get(corrID)!=null) return lastReplyCache.get(corrID).reply;
+        else {
+            if (lastReplyCache!=null) log.debug("No cached reply " + corrID + " on cache !");
+            else log.debug("No cache !");
+            return null;
+        }
+    }
+
+    public MsgAkkaAbsRequestActor(MomClient mclient, AppMsgWorker worker, MomMsgTranslator translator_, boolean cache) {
         client = mclient;
         msgWorker = worker;
         translator = translator_;
+        isRunning = true;
+        if (cache) {
+            lastReplyCache = new ConcurrentHashMap<>();
+            cacheCleaner = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while(isRunning) {
+                        try {
+                            Thread.sleep(replyCacheRetentionTime);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        long cleanTime = System.nanoTime();
+                        for (String corrID : lastReplyCache.keySet()) {
+                            CachedReply cachedReply = lastReplyCache.get(corrID);
+                            if ((cleanTime-cachedReply.replyTime)>replyCacheRetentionTime*1000000) lastReplyCache.remove(corrID);
+                        }
+                    }
+                }
+            });
+            cacheCleaner.start();
+        }
+    }
+
+    @Override
+    public void postStop() {
+        if (lastReplyCache!=null) lastReplyCache.clear();
+        isRunning = false;
     }
 
     public MomMsgTranslator getTranslator() {

@@ -38,19 +38,19 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
 
     private Channel      channel     = null;
 
-    public static Props props(final Client mclient, final Channel channel, final AppMsgWorker worker) {
+    public static Props props(final Client mclient, final Channel channel, final AppMsgWorker worker, final boolean cache) {
         return Props.create(new Creator<MsgRequestActor>() {
             private static final long serialVersionUID = 1L;
 
             @Override
             public MsgRequestActor create() throws Exception {
-                return new MsgRequestActor(mclient, channel, worker);
+                return new MsgRequestActor(mclient, channel, worker, cache);
             }
         });
     }
 
-    public MsgRequestActor(Client mclient, Channel chan, AppMsgWorker worker) {
-        super(mclient, worker, new MsgTranslator());
+    public MsgRequestActor(Client mclient, Channel chan, AppMsgWorker worker, boolean cache) {
+        super(mclient, worker, new MsgTranslator(), cache);
         channel = chan;
     }
 
@@ -69,7 +69,17 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                 else finalMessage.remove(MomMsgTranslator.MSG_TRACE);
             }
             ((MomLogger)log).traceMessage("MsgRequestActor.onReceive - in", finalMessage);
-            Map<String, Object> reply = super.getMsgWorker().apply(finalMessage);
+
+            Map<String, Object> reply=null;
+            if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)!=null &&
+                    super.getReplyFromCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID))!=null)
+                reply = super.getReplyFromCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID));
+            if (reply==null) reply = super.getMsgWorker().apply(finalMessage);
+            else log.debug("reply from cache !");
+
+            if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)!=null)
+                super.putReplyToCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID),reply);
+
             if (properties.getReplyTo()!=null && properties.getCorrelationId()!=null && reply!=null) {
                 reply.put(MsgTranslator.MSG_CORRELATION_ID, properties.getCorrelationId());
                 if (super.getClient().getClientID()!=null)
@@ -79,6 +89,7 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                 channel.basicPublish("", replyTo, (AMQP.BasicProperties) replyMessage.getProperties(), replyMessage.getBody());
             }
             channel.basicAck(((QueueingConsumer.Delivery)message).getEnvelope().getDeliveryTag(), false);
+
             ((MomLogger)log).traceMessage("MsgRequestActor.onReceive - out", finalMessage);
             if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
         } else

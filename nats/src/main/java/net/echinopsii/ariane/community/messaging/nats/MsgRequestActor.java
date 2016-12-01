@@ -35,19 +35,19 @@ import java.util.Map;
 public class MsgRequestActor extends MsgAkkaAbsRequestActor {
     private static final Logger log = MomLoggerFactory.getLogger(MsgRequestActor.class);
 
-    public static Props props(final Client mclient, final AppMsgWorker worker) {
+    public static Props props(final Client mclient, final AppMsgWorker worker, final boolean cache) {
         return Props.create(new Creator<MsgRequestActor>() {
             private static final long serialVersionUID = 1L;
 
             @Override
             public MsgRequestActor create() throws Exception {
-                return new MsgRequestActor(mclient, worker);
+                return new MsgRequestActor(mclient, worker, cache);
             }
         });
     }
 
-    public MsgRequestActor(Client mclient, AppMsgWorker worker) {
-        super(mclient, worker, new MsgTranslator());
+    public MsgRequestActor(Client mclient, AppMsgWorker worker, boolean cache) {
+        super(mclient, worker, new MsgTranslator(), cache);
     }
 
     @Override
@@ -59,8 +59,18 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                     if (super.getClient().isMsgDebugOnTimeout()) ((MomLogger)log).setTraceLevel(true);
                     else finalMessage.remove(MomMsgTranslator.MSG_TRACE);
                 }
+
                 ((MomLogger)log).traceMessage("MsgRequestActor.onReceive - in", finalMessage);
-                Map<String, Object> reply = super.getMsgWorker().apply(finalMessage);
+                Map<String, Object> reply=null;
+                if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)!=null &&
+                        super.getReplyFromCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID))!=null)
+                    reply = super.getReplyFromCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID));
+                if (reply==null) reply = super.getMsgWorker().apply(finalMessage);
+                else log.debug("reply from cache !");
+
+                if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)!=null)
+                    super.putReplyToCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID),reply);
+
                 if (((Message)message).getReplyTo() != null && reply!=null) {
                     if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)!=null) reply.put(
                             MsgTranslator.MSG_CORRELATION_ID, finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)
@@ -71,6 +81,7 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                     replyMessage.setSubject(((Message)message).getReplyTo());
                     ((Connection)super.getClient().getConnection()).publish(replyMessage);
                 }
+
                 ((MomLogger)log).traceMessage("MsgRequestActor.onReceive - out", finalMessage);
                 if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
             } catch (Exception e) {
