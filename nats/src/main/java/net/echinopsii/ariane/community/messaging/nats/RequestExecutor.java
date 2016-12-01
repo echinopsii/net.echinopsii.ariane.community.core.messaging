@@ -71,8 +71,8 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         }
 
         if (destinationTrace.get(destination)==null) destinationTrace.put(destination, false);
-        if (destinationTrace.get(destination)) request.put(MomMsgTranslator.MSG_RETRY_COUNT,true);
-        else request.remove(MomMsgTranslator.MSG_RETRY_COUNT);
+        if (destinationTrace.get(destination)) request.put(MomMsgTranslator.MSG_TRACE,true);
+        else request.remove(MomMsgTranslator.MSG_TRACE);
 
         Message message = new MsgTranslator().encode(request);
         message.setSubject(destination);
