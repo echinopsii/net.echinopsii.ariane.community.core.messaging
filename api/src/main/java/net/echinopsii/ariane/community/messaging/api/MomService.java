@@ -20,18 +20,78 @@
 
 package net.echinopsii.ariane.community.messaging.api;
 
-public interface MomService<A> {
+/**
+ * MomService interface.
+ *
+ * The service in charge of :
+ *
+ * - consuming message from Mom Broker resource (queue or subscription) and pushing to the actor in charge of the
+ * message business treatment in the case of a request service.
+ *
+ * OR
+ *
+ * - feeding data regularly on a topic in the case of a feeder service
+ *
+ * @see net.echinopsii.ariane.community.messaging.api.MomServiceFactory
+ *
+ * In the case this service is a request service, a Message Group Service Manager can be attached to this service
+ * to manage message treatment coming from a message group.
+ *
+ * @see net.echinopsii.ariane.community.messaging.api.MomMsgGroupServiceMgr
+ *
+ * @param <R> type of running reference (could be a thread id or an actor ref ....)
+ *
+ * Implementation with akka actors :
+ * @see net.echinopsii.ariane.community.messaging.common.MomAkkaService
+ * */
+public interface MomService<R> {
+    /**
+     * @return the service message feeder actor if this is a message feeder service else null
+     */
+    R getMsgFeeder();
+
+    /**
+     * @param runningRef from message feeder to associate with this service
+     * @param schedulerInterval
+     * @return
+     */
+    MomService setMsgFeeder(R runningRef, int schedulerInterval);
+
+    /**
+     * @return MomConsumer associated with this service if this is a request service else null
+     */
     MomConsumer getConsumer();
+
+    /**
+     * @param consumer to associate with this request service
+     * @return this service
+     */
     MomService setConsumer(MomConsumer consumer);
 
-    A getMsgWorker();
-    MomService setMsgWorker(A actorRef);
+    /**
+     * @return message worker actor associated with this service if this is a request service else null
+     */
+    R getMsgWorker();
 
-    A getMsgFeeder();
-    MomService setMsgFeeder(A actorRef, int schedulerInterval);
+    /**
+     * @param runningRef from message worker to associate with this service
+     * @return
+     */
+    MomService setMsgWorker(R runningRef);
 
+    /**
+     * @return associated message group services manager if this is a message request service else null
+     */
     MomMsgGroupServiceMgr getMsgGroupServiceMgr();
+
+    /**
+     * @param groupMgr the message group services manager to associate
+     * @return this service
+     */
     MomService setMsgGroupServiceMgr(MomMsgGroupServiceMgr groupMgr);
 
+    /**
+     * cleanly stop this service as such as its underlying resources
+     */
     void stop();
 }

@@ -22,7 +22,6 @@ package net.echinopsii.ariane.community.messaging.common;
 import org.slf4j.Logger;
 
 public class MomLoggerFactory {
-
     public static Logger getLogger(Class clazz) {
         return new MomLogger(clazz);
     }

@@ -22,10 +22,22 @@ package net.echinopsii.ariane.community.messaging.api;
 
 import java.util.Map;
 
+/**
+ *
+ */
 public interface AppMsgFeeder {
 
-    public final static String MSG_FEED_NOW = "FEED_NOW";
+    String MSG_FEED_NOW = "FEED_NOW";
 
-    public Map<String, Object> apply();
-    public int getInterval();
+    /**
+     *
+     * @return
+     */
+    Map<String, Object> apply();
+
+    /**
+     *
+     * @return
+     */
+    int getInterval();
 }

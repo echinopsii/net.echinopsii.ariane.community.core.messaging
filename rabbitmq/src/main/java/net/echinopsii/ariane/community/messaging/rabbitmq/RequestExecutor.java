@@ -56,7 +56,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     }
 
     @Override
-    public Map<String, Object> fireAndForget(Map<String, Object> request, String destination) {
+    public Map<String, Object> FAF(Map<String, Object> request, String destination) {
         try {
             String groupID = super.getMomClient().getCurrentMsgGroup();
             if (groupID!=null) destination = groupID + "-" + destination;
@@ -82,7 +82,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     }
 
     @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) throws TimeoutException {
+    public Map<String, Object> RPC(Map<String, Object> request, String destination, String answerSource, AppMsgWorker answerWorker) throws TimeoutException {
         Map<String, Object> response = null;
         QueueingConsumer.Delivery delivery = null;
         long beginWaitingAnswer = 0;
@@ -90,10 +90,10 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             String groupID = super.getMomClient().getCurrentMsgGroup();
             if (groupID!=null && !destination.contains(groupID)) {
                 destination = groupID + "-" + destination;
-                if (replySource==null) replySource = destination + "-RET";
+                if (answerSource ==null) answerSource = destination + "-RET";
                 if (this.sessionsRPCReplyQueues.get(groupID)==null)
                     this.sessionsRPCReplyQueues.put(groupID, new ArrayList<String>());
-                this.sessionsRPCReplyQueues.get(groupID).add(replySource);
+                this.sessionsRPCReplyQueues.get(groupID).add(answerSource);
             }
 
             if (!is_rpc_exchange_declared) {
@@ -108,13 +108,13 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             if (destinationTrace.get(destination)==null) destinationTrace.put(destination, false);
 
             String replyQueueName;
-            if (replySource==null) replyQueueName = channel.queueDeclare().getQueue();
-            else replyQueueName = replySource;
+            if (answerSource ==null) replyQueueName = channel.queueDeclare().getQueue();
+            else replyQueueName = answerSource;
 
             QueueingConsumer consumer;
             if (replyConsumers.get(replyQueueName)!=null) consumer = (QueueingConsumer) replyConsumers.get(replyQueueName);
             else {
-                if (replySource!=null) channel.queueDeclare(replyQueueName, false, true, true, null);
+                if (answerSource !=null) channel.queueDeclare(replyQueueName, false, true, true, null);
                 consumer = new QueueingConsumer(channel);
                 channel.basicConsume(replyQueueName, true, consumer);
                 replyConsumers.put(replyQueueName, consumer);
@@ -158,7 +158,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                 }
             }
 
-            if (replySource == null) {
+            if (answerSource == null) {
                 channel.queueDelete(replyQueueName);
                 replyConsumers.remove(replyQueueName);
             }
@@ -185,7 +185,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                     request.put(MomMsgTranslator.MSG_RETRY_COUNT, retryCount+1);
                     destinationTrace.put(destination, true);
                     log.warn("Retry (" + request.get(MomMsgTranslator.MSG_RETRY_COUNT) + ")");
-                    return this.RPC(request, destination, replySource, answerCB);
+                    return this.RPC(request, destination, answerSource, answerWorker);
                 } else
                     throw new TimeoutException(
                             "No response returned from request on " + destination + " queue after " +
@@ -193,12 +193,12 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                     );
             } else {
                 request.put(MomMsgTranslator.MSG_RETRY_COUNT, 1);
-                return this.RPC(request, destination, replySource, answerCB);
+                return this.RPC(request, destination, answerSource, answerWorker);
             }
         }
 
-        if (answerCB!=null)
-            response = answerCB.apply(response);
+        if (answerWorker !=null)
+            response = answerWorker.apply(response);
 
         return response;
     }

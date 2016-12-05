@@ -30,6 +30,9 @@ import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * MomAkkaRequestRouter : an actor to dispatch requests to worker routees (round robin)
+ */
 public class MomAkkaRequestRouter extends UntypedActor {
 
     private static final Logger log = MomLoggerFactory.getLogger(MomAkkaRequestRouter.class);
@@ -39,11 +42,17 @@ public class MomAkkaRequestRouter extends UntypedActor {
     private Props routeeProps = null;
     private String routeeNamePrefix = null;
 
-    public MomAkkaRequestRouter(Props routeeProps, String routeeNamePrefix, int nbRoutees) {
+    /**
+     * Constructor
+     * @param routeeProps routee Akka props to create worker actors
+     * @param routeeNamePrefix routee name prefix
+     * @param routeesCount routees count to be managed
+     */
+    public MomAkkaRequestRouter(Props routeeProps, String routeeNamePrefix, int routeesCount) {
         this.routeeProps = routeeProps;
         this.routeeNamePrefix = routeeNamePrefix;
         List<Routee> routees = new ArrayList<>();
-        for (int i = 0; i < nbRoutees; i++) {
+        for (int i = 0; i < routeesCount; i++) {
             ActorRef r = getContext().actorOf(routeeProps, routeeNamePrefix + "__" + i);
             getContext().watch(r);
             routees.add(new ActorRefRoutee(r));
@@ -51,13 +60,19 @@ public class MomAkkaRequestRouter extends UntypedActor {
         this.router = new Router(new RoundRobinRoutingLogic(), routees);
     }
 
-    public static Props props(final Props props, final String namePrefix, final int nbRoutees) {
+    /**
+     * @param routeeProps routee Akka props to create worker actors
+     * @param routeeNamePrefix routee name prefix
+     * @param routeesCount routees count to be managed
+     * @return Akka Props to create an actor for MomAkkaRequestRouter
+     */
+    public static Props props(final Props routeeProps, final String routeeNamePrefix, final int routeesCount) {
         return Props.create(new Creator<MomAkkaRequestRouter>() {
             private static final long serialVersionUID = 1L;
 
             @Override
             public MomAkkaRequestRouter create() throws Exception {
-                return new MomAkkaRequestRouter(props, namePrefix, nbRoutees);
+                return new MomAkkaRequestRouter(routeeProps, routeeNamePrefix, routeesCount);
             }
         });
     }
@@ -66,8 +81,15 @@ public class MomAkkaRequestRouter extends UntypedActor {
         return getContext().actorOf(props, name);
     }
 
+    /**
+     * Message treatment.
+     * if input message is "kill"
+     * else if message instanceof Terminated create a new routee if !willStopSoon
+     * else route message to routees (round robing)
+     * @param message
+     */
     @Override
-    public void onReceive(Object message) throws Exception {
+    public void onReceive(Object message) {
         if (message.equals("kill")) {
             for (ActorRef each : getContext().getChildren()) {
                 getContext().unwatch(each);

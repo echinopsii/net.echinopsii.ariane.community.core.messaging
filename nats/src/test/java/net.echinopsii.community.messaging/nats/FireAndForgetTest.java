@@ -86,7 +86,7 @@ public class FireAndForgetTest {
 
             Map<String, Object> message = new HashMap<String, Object>();
             message.put(MomMsgTranslator.MSG_BODY, sendedMsgBody);
-            client.createRequestExecutor().fireAndForget(message, "FAF_SUBJECT");
+            client.createRequestExecutor().FAF(message, "FAF_SUBJECT");
 
             Thread.sleep(1000);
 

@@ -22,43 +22,49 @@ package net.echinopsii.ariane.community.messaging.api;
 
 import java.util.List;
 
-public interface MomServiceFactory<SRV extends MomService, C extends AppMsgWorker, F extends AppMsgFeeder, S> {
+/**
+ *
+ * @param <SRV>
+ * @param <W>
+ * @param <F>
+ * @param <S>
+ */
+public interface MomServiceFactory<SRV extends MomService, W extends AppMsgWorker, F extends AppMsgFeeder, S> {
     /**
-     * request worker from a source - can manage message grouping (usefull for mono-thread sessions)
+     * Request worker from a source - can manage message grouping (usefull for mono-thread sessions)
      * @param source the source where request are coming from
-     * @param requestCB the application request worker
+     * @param requestWorker the application request worker
      * @return service
      */
-    public SRV msgGroupRequestService(S source, C requestCB);
+    SRV msgGroupRequestService(S source, W requestWorker);
 
     /**
-     * request worker from a source - no transaction possible here.
+     * Request worker from a source - no transaction possible here.
      * @param source the source where request are coming from
-     * @param requestCB the application request worker
+     * @param requestWorker the application request worker
      * @return service
      */
-    public SRV requestService(S source, C requestCB);
+    SRV requestService(S source, W requestWorker);
 
     /**
-     * feed message to a baseDestination
+     * Feed message to a baseDestination
      * @param baseDestination the baseDestination (must be a topic)
-     * @param feederCB the application feeder building the message to feed
+     * @param feeder the application feeder building the message to feed
      * @return service ref
      */
-    public SRV feederService(S baseDestination, S selector, int interval, F feederCB);
+    SRV feederService(S baseDestination, S selector, int interval, F feeder);
 
     /**
-     * receive message from a feed source
+     * Receive message from a feed source
      * @param source the feed source
-     * @param feedCB the feed message worker
+     * @param feedWorker the feed message worker
      * @return service ref
      */
-    public SRV subscriberService(S source, String selector, C feedCB);
+    SRV subscriberService(S source, S selector, W feedWorker);
 
     /**
-     * get services list
-     *
+     * Get services list
      * @return the service list
      */
-    public List<SRV> getServices();
+    List<SRV> getServices();
 }

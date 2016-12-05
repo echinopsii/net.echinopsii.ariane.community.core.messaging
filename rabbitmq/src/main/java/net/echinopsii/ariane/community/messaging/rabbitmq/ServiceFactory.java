@@ -63,7 +63,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
     }
 
     private static ActorRef createRequestRouter(String source, MomClient client, Channel channel, AppMsgWorker requestCB, ActorRef supervisor, boolean cache) {
-        return createRequestRouter(source, client, channel, requestCB, supervisor, ((Client) client).getNbRouteesPerService(), cache);
+        return createRequestRouter(source, client, channel, requestCB, supervisor, ((Client) client).getRouteesCountPerService(), cache);
     }
 
     private static MomConsumer createConsumer(final String source, final Channel channel, final ActorRef runnableReqActor, final boolean isMsgDebugOnTimeout) {
@@ -186,7 +186,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
     }
 
     @Override
-    public MomAkkaService msgGroupRequestService(String source, AppMsgWorker requestCB) {
+    public MomAkkaService msgGroupRequestService(String source, AppMsgWorker requestWorker) {
         final Connection  connection   = ((Client)super.getMomClient()).getConnection();
         MomAkkaService ret = null;
         ActorRef    requestActor ;
@@ -197,9 +197,9 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             try {
                 Channel channel = connection.createChannel();
                 channel.basicQos(1);
-                requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), channel, requestCB, null, true);
+                requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), channel, requestWorker, null, true);
                 consumer = ServiceFactory.createConsumer(source, channel, requestActor, super.getMomClient().isMsgDebugOnTimeout());
-                msgGroupMgr = ServiceFactory.createMsgGroupServiceManager(source, channel, requestCB, super.getMomClient());
+                msgGroupMgr = ServiceFactory.createMsgGroupServiceManager(source, channel, requestWorker, super.getMomClient());
                 consumer.start();
                 ret = new MomAkkaService().setMsgWorker(requestActor).setConsumer(consumer).setClient((Client) super.getMomClient()).setMsgGroupServiceMgr(msgGroupMgr);
                 super.getServices().add(ret);
@@ -215,13 +215,13 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
      * Create and start a new request service
      *
      * @param source the source where request are coming from
-     * @param requestCB the application request worker
+     * @param requestWorker the application request worker
      *
      * @return the request service
      *
      */
     @Override
-    public MomAkkaService requestService(final String source, final AppMsgWorker requestCB) {
+    public MomAkkaService requestService(final String source, final AppMsgWorker requestWorker) {
         final Connection  connection   = ((Client)super.getMomClient()).getConnection();
         MomAkkaService ret          = null;
         ActorRef    requestActor ;
@@ -231,7 +231,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
             try {
                 Channel channel = connection.createChannel();
                 channel.basicQos(1);
-                requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), channel, requestCB, null, false);
+                requestActor = ServiceFactory.createRequestRouter(source, super.getMomClient(), channel, requestWorker, null, false);
                 consumer = ServiceFactory.createConsumer(source, channel, requestActor, super.getMomClient().isMsgDebugOnTimeout());
                 consumer.start();
 
@@ -246,13 +246,13 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
     }
 
     @Override
-    public MomAkkaService feederService(String baseDestination, String selector, int interval, AppMsgFeeder feederCB) {
+    public MomAkkaService feederService(String baseDestination, String selector, int interval, AppMsgFeeder feederWorker) {
         MomAkkaService ret = null;
         ActorRef feederActor = null;
         Connection  connection   = ((Client)super.getMomClient()).getConnection();
         if (connection != null && connection.isOpen()) {
             ActorRef feeder = ((Client)super.getMomClient()).getActorSystem().actorOf(MsgFeederActor.props(
-                    ((Client)super.getMomClient()),baseDestination, selector, feederCB)
+                    ((Client)super.getMomClient()),baseDestination, selector, feederWorker)
             );
             ret = new MomAkkaService().setClient(((Client) super.getMomClient())).setMsgFeeder(feeder, interval);
             super.getServices().add(ret);
@@ -261,7 +261,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
     }
 
     @Override
-    public MomAkkaService subscriberService(final String baseSource, String selector, AppMsgWorker feedCB) {
+    public MomAkkaService subscriberService(final String baseSource, String selector, AppMsgWorker feedWorker) {
         MomAkkaService ret       = null;
         ActorRef    subsActor = null;
         MomConsumer consumer  = null;
@@ -272,7 +272,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
 
         if (connection != null && connection.isOpen()) {
             subsActor = ((Client)super.getMomClient()).getActorSystem().actorOf(
-                    MsgSubsActor.props(feedCB), baseSource + "." + ((selector.equals("#")) ? "all" : selector) + "_msgWorker"
+                    MsgSubsActor.props(feedWorker), baseSource + "." + ((selector.equals("#")) ? "all" : selector) + "_msgWorker"
             );
             final ActorRef runnableSubsActor = subsActor;
             final String   select           = selector;

@@ -21,8 +21,18 @@ package net.echinopsii.ariane.community.messaging.common;
 
 import net.echinopsii.ariane.community.messaging.api.MomClient;
 
+/**
+ * MomClientFactory : provide maker to instantiate a new MomClient according target implementation definition
+ */
 public class MomClientFactory {
 
+    /**
+     * @param clazzName define the implementation definition.
+     * @return the instantiated MomClient
+     * @throws IllegalAccessException
+     * @throws InstantiationException
+     * @throws ClassNotFoundException
+     */
     public static MomClient make(String clazzName) throws IllegalAccessException, InstantiationException, ClassNotFoundException {
         MomClient ret = null;
         ClassLoader loader = new MomClientFactory().getClass().getClassLoader();

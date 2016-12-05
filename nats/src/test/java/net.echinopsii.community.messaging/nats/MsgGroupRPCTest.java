@@ -87,11 +87,11 @@ public class MsgGroupRPCTest {
             Map<String, Object> reply = new HashMap<>(message);
             if (message.get("OP").equals("OPEN_SESSION")) {
                 String sessionID = String.valueOf(UUID.randomUUID());
-                client.openMsgGroupService(sessionID);
+                client.openMsgGroupServices(sessionID);
                 reply.put("SESSION_ID", sessionID);
             } else if (message.get("OP").equals("CLOSE_SESSION")) {
                 String sessionID = (String) message.get("SESSION_ID");
-                client.closeMsgGroupService(sessionID);
+                client.closeMsgGroupServices(sessionID);
             }
             return reply;
         }

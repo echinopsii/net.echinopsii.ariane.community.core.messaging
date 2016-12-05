@@ -25,8 +25,27 @@ import org.slf4j.spi.LocationAwareLogger;
 import java.io.Serializable;
 import java.util.Map;
 
+/**
+ * MomLogger interface extends traditional loggers interface to help log and debug message flow treatment on
+ * the MomClient services.
+ *
+ * When trace level is enabled any log following the message flow will be printed (whatever the original
+ * log level configured by class).
+ *
+ */
 public interface MomLogger extends Serializable, Logger, LocationAwareLogger {
+    /**
+     * Define if the message trace will be available through the message treatment.
+     * @param isTraceLevelEnabled
+     * @return
+     */
     MomLogger setTraceLevel(boolean isTraceLevelEnabled);
 
+    /**
+     * Trace a message
+     * @param opsName the operation name (basically the class and method where this method is called)
+     * @param message the message to trace
+     * @param ignoredFields the list of message fields to ignore in the trace
+     */
     void traceMessage(String opsName, Map<String, Object> message, String... ignoredFields);
 }

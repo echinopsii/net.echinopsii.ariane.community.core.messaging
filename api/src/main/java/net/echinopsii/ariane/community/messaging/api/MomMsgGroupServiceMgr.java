@@ -19,8 +19,30 @@
  */
 package net.echinopsii.ariane.community.messaging.api;
 
+/**
+ * MomMsgGroupServiceMgr interface.
+ *
+ * Manage message group service through specific main service :
+ * - store the opened message group service in a memory registry
+ * - provide helper method to stop a message group service
+ * - stop cleanly any message group service on final stop
+ */
 public interface MomMsgGroupServiceMgr {
+    /**
+     * open a message group service and attach it to this MomMsgGroupServiceMgr
+     * @param groupID
+     */
     void openMsgGroupService(String groupID);
+
+    /**
+     * close a message group service and detach it from this MomMsgGroupServiceMgr
+     * @param groupID
+     */
     void closeMsgGroupService(String groupID);
+
+    /**
+     * stop this MomMsgGroupServiceMgr and any non closed message group service still attached
+     * to this MomMsgGroupServiceMgr.
+     */
     void stop();
 }

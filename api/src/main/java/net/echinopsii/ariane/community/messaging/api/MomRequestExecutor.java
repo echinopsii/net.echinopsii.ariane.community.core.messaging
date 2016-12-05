@@ -22,24 +22,43 @@ package net.echinopsii.ariane.community.messaging.api;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
-public interface MomRequestExecutor<Q, C extends AppMsgWorker> {
+/**
+ * MomRequestExecutor interface
+ *
+ * Provide simple method definition for :
+ * - fire and forget request (no answer awaited)
+ * - remote procedure call request where the answer will be treated by provided answer worker.
+ *
+ * @param <Q> type of destination / source (could be a String or specific MoM queue)
+ * @param <W> type of AppMsgWorker (where you push your business logic)
+ */
+public interface MomRequestExecutor<Q, W extends AppMsgWorker> {
 
     /**
      * send request / no answer awaited
      * @param request the request message
      * @param destination the target destination queue
-     * @return request message
+     * @return the request message
      */
-    public Map<String, Object> fireAndForget(Map<String, Object> request, Q destination);
+    Map<String, Object> FAF(Map<String, Object> request, Q destination);
 
     /**
      * send a request and get the answer
      * @param request the request message
      * @param destination the target destination queue
-     * @param answerCB the callback object to treat the answer
+     * @param answerWorker the worker object to treat the answer
      * @return the answer message
      */
-    public Map<String, Object> RPC(Map<String, Object> request, Q destination, C answerCB) throws TimeoutException;
+    Map<String, Object> RPC(Map<String, Object> request, Q destination, W answerWorker) throws TimeoutException;
 
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) throws TimeoutException;
+    /**
+     * send a request and get the answer from specified answer source
+     * @param request the request message
+     * @param destination the target destination queue
+     * @param answerSource the source to get the answer from
+     * @param answerWorker the worker object to treat the answer
+     * @return the answer message
+     * @throws TimeoutException
+     */
+    Map<String, Object> RPC(Map<String, Object> request, Q destination, Q answerSource, W answerWorker) throws TimeoutException;
 }

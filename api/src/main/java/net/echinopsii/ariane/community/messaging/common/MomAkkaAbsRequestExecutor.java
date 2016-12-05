@@ -20,27 +20,43 @@
 package net.echinopsii.ariane.community.messaging.common;
 
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
-import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
+/**
+ * MomAkkaAbsRequestExecutor provides an abstract implementation of MomRequestExecutor interface based on actors model and Akka.
+ */
 public abstract class MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
 
-    private MomClient momClient;
+    private MomAkkaAbsClient momClient;
 
-    public MomAkkaAbsRequestExecutor(MomClient client) throws IOException {
+    /**
+     * Constructor
+     * @param client : the MomClient this request executor will work with
+     */
+    public MomAkkaAbsRequestExecutor(MomAkkaAbsClient client) {
         momClient = client;
     }
 
-    public MomClient getMomClient() {
+    /**
+     * @return the MomAkkaAbsClient defined with this request executor.
+     */
+    public MomAkkaAbsClient getMomClient() {
         return momClient;
     }
 
+    /**
+     * Remote procedure call
+     * @param request the request message
+     * @param destination the target destination queue
+     * @param answerWorker the worker object to treat the answer
+     * @return the reply of this rpc
+     * @throws TimeoutException when no reply comes after momClient.rpcRetry * momClient.rpcTimeout (sec)
+     */
     @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, AppMsgWorker answerCB) throws TimeoutException {
-        return RPC(request, destination, null, answerCB);
+    public Map<String, Object> RPC(Map<String, Object> request, String destination, AppMsgWorker answerWorker) throws TimeoutException {
+        return RPC(request, destination, null, answerWorker);
     }
 }

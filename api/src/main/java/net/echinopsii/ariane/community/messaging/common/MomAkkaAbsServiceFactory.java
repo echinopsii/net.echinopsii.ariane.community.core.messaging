@@ -24,19 +24,32 @@ import net.echinopsii.ariane.community.messaging.api.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * MomAkkaAbsServiceFactory provides an abstract implementation of MomServiceFactory interface based on actors model and Akka.
+ */
 public abstract class MomAkkaAbsServiceFactory implements MomServiceFactory<MomAkkaService, AppMsgWorker, AppMsgFeeder, String> {
 
-    private MomClient momClient ;
+    private MomAkkaAbsClient momClient ;
     private List<MomAkkaService> serviceList  = new ArrayList<MomAkkaService>();
 
-    public MomAkkaAbsServiceFactory(MomClient client) {
+    /**
+     * Constructor
+     * @param client : the MomClient this request executor will work with
+     */
+    public MomAkkaAbsServiceFactory(MomAkkaAbsClient client) {
         momClient = client;
     }
 
+    /**
+     * @return services created through this service factory.
+     */
     @Override
     public List<MomAkkaService> getServices() {
         return serviceList;
     }
 
-    public MomClient getMomClient() { return momClient;}
+    /**
+     * @return he MomAkkaAbsClient defined with this service factory.
+     */
+    public MomAkkaAbsClient getMomClient() { return momClient;}
 }

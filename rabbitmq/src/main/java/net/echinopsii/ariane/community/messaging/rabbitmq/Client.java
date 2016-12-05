@@ -53,7 +53,7 @@ public class Client extends MomAkkaAbsClient implements MomClient {
                 (((String)properties.get(MOM_CLI_MSG_DEBUG_ON_TIMEOUT)).toLowerCase().equals("true")))
             super.setMsgDebugOnTimeout(true);
         if (properties.get(MOM_CLI_ROUTEES_NB_PER_SERVICE)!=null)
-            super.setNbRouteesPerService(new Integer((String) properties.get(MOM_CLI_ROUTEES_NB_PER_SERVICE)));
+            super.setRouteesCountPerService(new Integer((String) properties.get(MOM_CLI_ROUTEES_NB_PER_SERVICE)));
         try {
             if (Class.forName("akka.osgi.ActorSystemActivator")!=null && MessagingAkkaSystemActivator.getSystem() != null)
                 super.setActorSystem(MessagingAkkaSystemActivator.getSystem());

@@ -20,8 +20,25 @@
 
 package net.echinopsii.ariane.community.messaging.api;
 
+/**
+ * MomConsumer interface is a runnable with few helpers method
+ * Used internally to implement message consumers which then dispatch
+ * immediately to AppMsgWoker actors.
+ */
 public interface MomConsumer extends Runnable {
-    public boolean isRunning();
-    public void    start();
-    public void    stop();
+    /**
+     *
+     * @return true if running else false
+     */
+    boolean isRunning();
+
+    /**
+     * start consuming messaging resource
+     */
+    void    start();
+
+    /**
+     * stop consuming messaging resource
+     */
+    void    stop();
 }

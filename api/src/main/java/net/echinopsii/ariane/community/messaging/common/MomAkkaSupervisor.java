@@ -28,24 +28,34 @@ import scala.concurrent.Await;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
 
+/**
+ * MomAkkaSupervisor : an actor to handle services supervision
+ */
 public class MomAkkaSupervisor extends UntypedActor {
 
     private static final Logger log = MomLoggerFactory.getLogger(MomAkkaSupervisor.class);
     private boolean willStopSoon = false;
 
-    public static class MomAkkaNewActorReq {
+    private static class MomAkkaSupervisorNewActorReq {
         Props props;
         String name;
 
-        public MomAkkaNewActorReq(Props props, String name) {
+        public MomAkkaSupervisorNewActorReq(Props props, String name) {
             this.props = props;
             this.name = name;
         }
     }
 
-    public static ActorRef createNewSupervisedService(ActorRef ar, Props props, String name) {
+    /**
+     * Create a new supervised service as a child of an actor
+     * @param supervisorAR the supervisor parent actor ref in charge of creating the new service
+     * @param props Akka Props to create the new supervised service actor
+     * @param name the supervised service name
+     * @return the new supervised service actor ref
+     */
+    public static ActorRef createNewSupervisedService(ActorRef supervisorAR, Props props, String name) {
         Timeout timeout = new Timeout(Duration.create(2, "seconds"));
-        Future<Object> futureAR = Patterns.ask(ar, new MomAkkaNewActorReq(props, name), timeout);
+        Future<Object> futureAR = Patterns.ask(supervisorAR, new MomAkkaSupervisorNewActorReq(props, name), timeout);
         ActorRef ret = null;
         try {
             ret = (ActorRef) Await.result(futureAR, timeout.duration());
@@ -55,10 +65,17 @@ public class MomAkkaSupervisor extends UntypedActor {
         return ret;
     }
 
+    /**
+     * send a stop soon notification to actor identified by ar
+     * @param ar actorRef which identify the actor to notify
+     */
     public static void willStopSoon(ActorRef ar) {
         ar.tell("stop_soon", null);
     }
 
+    /**
+     * @return Akka Props to create an actor for MomAkkaSupervisor
+     */
     public static Props props() {
         return Props.create(new Creator<MomAkkaSupervisor>() {
             private static final long serialVersionUID = 1L;
@@ -74,8 +91,17 @@ public class MomAkkaSupervisor extends UntypedActor {
         return getContext().actorOf(props, name);
     }
 
+    /**
+     * Message treatment.
+     * if message is "kill" then unwatch and stop cleanly all supervised child actors and finally send a poison pill to any child still alive
+     * else if message is "stop_soon" set boolean accordingly
+     * else if message instanceof Terminated log warn which actor has been terminated
+     * else if message instanceof MomAkkaSupervisorNewActorReq create a new supervised service
+     * else unhandled this message
+     * @param message to treat.
+     */
     @Override
-    public void onReceive(Object message) throws Exception {
+    public void onReceive(Object message) {
         if (message.equals("kill")) {
             for (ActorRef each : getContext().getChildren()) {
                 getContext().unwatch(each);
@@ -88,8 +114,8 @@ public class MomAkkaSupervisor extends UntypedActor {
             final Terminated t = (Terminated) message;
             if (willStopSoon) log.debug("Actor " + t.getActor().path().name() + " is terminated.");
             else log.warn("Actor " + t.getActor().path().name() + " is terminated.");
-        } else if (message instanceof MomAkkaNewActorReq) {
-            final MomAkkaNewActorReq req = (MomAkkaNewActorReq) message;
+        } else if (message instanceof MomAkkaSupervisorNewActorReq) {
+            final MomAkkaSupervisorNewActorReq req = (MomAkkaSupervisorNewActorReq) message;
 
             try {
                 ActorRef ref = actorOf(req.props, req.name);

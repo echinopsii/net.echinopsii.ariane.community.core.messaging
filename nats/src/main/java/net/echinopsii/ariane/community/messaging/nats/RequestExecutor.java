@@ -47,7 +47,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     }
 
     @Override
-    public Map<String, Object> fireAndForget(Map<String, Object> request, String destination) {
+    public Map<String, Object> FAF(Map<String, Object> request, String destination) {
         String groupID = super.getMomClient().getCurrentMsgGroup();
         if (groupID!=null) destination = groupID + "-" + destination;
         Message message = new MsgTranslator().encode(request);
@@ -61,13 +61,13 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     }
 
     @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, String replySource, AppMsgWorker answerCB) throws TimeoutException {
+    public Map<String, Object> RPC(Map<String, Object> request, String destination, String answerSource, AppMsgWorker answerWorker) throws TimeoutException {
         Map<String, Object> response = null;
 
         String groupID = super.getMomClient().getCurrentMsgGroup();
         if (groupID!=null && !destination.contains(groupID)) {
             destination = groupID + "-" + destination;
-            if (replySource==null) replySource = destination + "-RET";
+            if (answerSource ==null) answerSource = destination + "-RET";
         }
 
         String corrId;
@@ -85,13 +85,13 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
 
         Message message = new MsgTranslator().encode(request);
         message.setSubject(destination);
-        if (replySource!=null) message.setReplyTo(replySource);
+        if (answerSource !=null) message.setReplyTo(answerSource);
 
         try {
             Message msgResponse = null;
             long beginWaitingAnswer = 0;
 
-            if (replySource==null) {
+            if (answerSource ==null) {
                 beginWaitingAnswer = System.nanoTime();
                 msgResponse = ((Connection) super.getMomClient().getConnection()).request(
                         message.getSubject(), message.getData(), super.getMomClient().getRPCTimout(), TimeUnit.SECONDS
@@ -100,18 +100,18 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                 SyncSubscription subs;
                 if (groupID!=null) {
                     if (sessionsRPCSubs.get(groupID) != null) {
-                        if (sessionsRPCSubs.get(groupID).get(replySource) != null) subs = sessionsRPCSubs.get(groupID).get(replySource);
+                        if (sessionsRPCSubs.get(groupID).get(answerSource) != null) subs = sessionsRPCSubs.get(groupID).get(answerSource);
                         else {
-                            subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(replySource);
-                            sessionsRPCSubs.get(groupID).put(replySource, subs);
+                            subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
+                            sessionsRPCSubs.get(groupID).put(answerSource, subs);
                         }
                     } else {
                         HashMap<String, SyncSubscription> groupSubs = new HashMap<>();
-                        subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(replySource);
-                        groupSubs.put(replySource, subs);
+                        subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
+                        groupSubs.put(answerSource, subs);
                         sessionsRPCSubs.put(groupID, groupSubs);
                     }
-                } else subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(replySource);
+                } else subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
 
                 if (destinationTrace.get(destination)) log.info("send request " + corrId);
                 ((Connection) super.getMomClient().getConnection()).publish(message);
@@ -156,7 +156,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                         request.put(MomMsgTranslator.MSG_RETRY_COUNT, retryCount+1);
                         destinationTrace.put(destination, true);
                         log.warn("Retry (" + request.get(MomMsgTranslator.MSG_RETRY_COUNT) + ")");
-                        return this.RPC(request, destination, replySource, answerCB);
+                        return this.RPC(request, destination, answerSource, answerWorker);
                     } else
                         throw new TimeoutException(
                                 "No response returned from request on " + destination + " queue after " +
@@ -164,15 +164,15 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                         );
                 } else {
                     request.put(MomMsgTranslator.MSG_RETRY_COUNT, 1);
-                    return this.RPC(request, destination, replySource, answerCB);
+                    return this.RPC(request, destination, answerSource, answerWorker);
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        if (answerCB!=null)
-            response = answerCB.apply(response);
+        if (answerWorker !=null)
+            response = answerWorker.apply(response);
 
         return response;
     }

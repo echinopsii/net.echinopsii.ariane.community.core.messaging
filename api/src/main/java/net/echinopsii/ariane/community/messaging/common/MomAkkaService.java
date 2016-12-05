@@ -26,6 +26,9 @@ import scala.concurrent.duration.Duration;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * MomAkkaService implements MomService with akka actors
+ */
 public class MomAkkaService implements MomService<ActorRef>{
     private MomMsgGroupServiceMgr msgGroupServiceMgr;
     private MomConsumer consumer;
@@ -34,56 +37,88 @@ public class MomAkkaService implements MomService<ActorRef>{
     private Cancellable cancellable;
     private MomAkkaAbsClient client;
 
+    /**
+     * @return message feeder actor ref associater with this service if this is a feeder service else null
+     */
+    @Override
+    public ActorRef getMsgFeeder() {
+        return msgFeeder;
+    }
+
+    /**
+     * @param actorRef
+     * @param schedulerInterval
+     * @return
+     */
+    @Override
+    public MomAkkaService setMsgFeeder(ActorRef actorRef, int schedulerInterval) {
+        this.msgFeeder = actorRef;
+        cancellable = client.getActorSystem().scheduler().schedule(Duration.Zero(),
+                Duration.create(schedulerInterval, TimeUnit.MILLISECONDS),
+                actorRef,
+                AppMsgFeeder.MSG_FEED_NOW,
+                client.getActorSystem().dispatcher(),
+                null);
+        return this;
+    }
+
+    /**
+     * @return MomConsumer associated with this service if this is a request service else null
+     */
     @Override
     public MomConsumer getConsumer() {
         return consumer;
     }
 
+    /**
+     * @param consumer to assiocate with this service
+     * @return
+     */
     @Override
     public MomAkkaService setConsumer(MomConsumer consumer) {
         this.consumer = consumer;
         return this;
     }
 
+    /**
+     * @return message worker akka actor ref associated with this service if this is a request service else null
+     */
     @Override
     public ActorRef getMsgWorker() {
         return msgWorker;
     }
 
+    /**
+     * @param actorRef akka actor ref from message worker to associate with this service
+     * @return this
+     */
     @Override
-    public MomAkkaService setMsgWorker(ActorRef msgWorker) {
-        this.msgWorker = msgWorker;
+    public MomAkkaService setMsgWorker(ActorRef actorRef) {
+        this.msgWorker = actorRef;
         return this;
     }
 
-    @Override
-    public ActorRef getMsgFeeder() {
-        return msgFeeder;
-    }
-
-    @Override
-    public MomAkkaService setMsgFeeder(ActorRef msgFeeder, int schedulerInterval) {
-        this.msgFeeder = msgFeeder;
-        cancellable = client.getActorSystem().scheduler().schedule(Duration.Zero(),
-                                                                   Duration.create(schedulerInterval, TimeUnit.MILLISECONDS),
-                                                                   msgFeeder,
-                                                                   AppMsgFeeder.MSG_FEED_NOW,
-                                                                   client.getActorSystem().dispatcher(),
-                                                                   null);
-        return this;
-    }
-
+    /**
+     * @return message group service managerif this service is a request service providing message grouping possibility else null
+     */
     @Override
     public MomMsgGroupServiceMgr getMsgGroupServiceMgr() {
         return msgGroupServiceMgr;
     }
 
+    /**
+     * @param groupMgr the message group services manager to associate
+     * @return this service
+     */
     @Override
     public MomAkkaService setMsgGroupServiceMgr(MomMsgGroupServiceMgr groupMgr) {
         this.msgGroupServiceMgr = groupMgr;
         return this;
     }
 
+    /**
+     * Stop this service and attached resources
+     */
     @Override
     public void stop() {
         if (consumer != null) consumer.stop();
@@ -93,10 +128,17 @@ public class MomAkkaService implements MomService<ActorRef>{
         if (cancellable != null) cancellable.cancel();
     }
 
-    public MomClient getClient() {
+    /**
+     * @return the MomAkkaAbsClient defined with this service.
+     */
+    public MomAkkaAbsClient getClient() {
         return client;
     }
 
+    /**
+     * @param client the MomAkkaAbsClient defined with this service.
+     * @return this service
+     */
     public MomAkkaService setClient(MomAkkaAbsClient client) {
         this.client = client;
         return this;

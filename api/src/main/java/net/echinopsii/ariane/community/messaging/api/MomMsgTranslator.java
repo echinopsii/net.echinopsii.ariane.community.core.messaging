@@ -22,6 +22,14 @@ package net.echinopsii.ariane.community.messaging.api;
 
 import java.util.Map;
 
+/**
+ * MomMsgTranslator interface.
+ *
+ * Provide message fields, error codes and method definitions to encode / decode Map<String, Object> message to/from
+ * specific MoM broker implementation.
+ *
+ * @param <M> the MoM broker message type
+ */
 public interface MomMsgTranslator<M> {
 
     String MSG_APPLICATION_ID = "MSG_APPLICATION_ID";
@@ -51,6 +59,17 @@ public interface MomMsgTranslator<M> {
 
     Map<String, Class>  getMessageTypo();
 
+    /**
+     *
+     * @param message
+     * @return
+     */
     M                   encode(Map<String, Object> message);
+
+    /**
+     *
+     * @param message
+     * @return
+     */
     Map<String, Object> decode(M message);
 }

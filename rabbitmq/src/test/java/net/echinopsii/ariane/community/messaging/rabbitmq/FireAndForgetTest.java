@@ -99,7 +99,7 @@ public class FireAndForgetTest {
 
             Map<String, Object> message = new HashMap<String, Object>();
             message.put(MomMsgTranslator.MSG_BODY, sendedMsgBody);
-            client.createRequestExecutor().fireAndForget(message, "FAF_QUEUE");
+            client.createRequestExecutor().FAF(message, "FAF_QUEUE");
 
             Thread.sleep(1000);
 

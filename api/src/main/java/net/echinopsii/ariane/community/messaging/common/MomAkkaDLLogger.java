@@ -21,17 +21,18 @@ package net.echinopsii.ariane.community.messaging.common;
 
 import akka.actor.*;
 import akka.japi.Creator;
-import akka.pattern.Patterns;
-import akka.util.Timeout;
 import org.slf4j.Logger;
-import scala.concurrent.Await;
-import scala.concurrent.Future;
-import scala.concurrent.duration.Duration;
 
+/**
+ * MomAkkaDLLogger : an actor to log dead letter
+ */
 public class MomAkkaDLLogger extends UntypedActor {
 
     private static final Logger log = MomLoggerFactory.getLogger(MomAkkaDLLogger.class);
 
+    /**
+     * @return Akka Props to create an actor for MomAkkaDLLogger
+     */
     public static Props props() {
         return Props.create(new Creator<MomAkkaDLLogger>() {
             private static final long serialVersionUID = 1L;
@@ -43,8 +44,15 @@ public class MomAkkaDLLogger extends UntypedActor {
         });
     }
 
+    /**
+     * Message treatment.
+     * if input message is instanceof DeadLetter then log warn the dead letter
+     * else pass input message to unhandled
+     * @see akka.actor.UntypedActor#unhandled(Object)
+     * @param message to treat.
+     */
     @Override
-    public void onReceive(Object message) throws Exception {
+    public void onReceive(Object message) {
         if (message instanceof DeadLetter) {
             final DeadLetter d = (DeadLetter) message;
             log.warn("DeadLetter " + d.message().toString() + " received. Recipient was " + d.recipient().path().name() + " .");
