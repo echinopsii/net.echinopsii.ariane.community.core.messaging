@@ -56,7 +56,7 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
             try {
                 Map<String, Object> finalMessage = ((MsgTranslator)super.getTranslator()).decode((Message) message);
                 if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) {
-                    if (super.getClient().isMsgDebugOnTimeout()) ((MomLogger)log).setTraceLevel(true);
+                    if (super.getClient().isMsgDebugOnTimeout()) ((MomLogger)log).setMsgTraceLevel(true);
                     else finalMessage.remove(MomMsgTranslator.MSG_TRACE);
                 }
 
@@ -83,7 +83,7 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                 }
 
                 ((MomLogger)log).traceMessage("MsgRequestActor.onReceive - out", finalMessage);
-                if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
+                if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setMsgTraceLevel(false);
             } catch (Exception e) {
                 e.printStackTrace();
             }

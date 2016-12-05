@@ -26,21 +26,21 @@ import java.util.Properties;
 /**
  * MomClient interface.
  * A class implementing this interface will manage the MoM broker connection.
- *
- * This is the entry point :
- * - to create new services via this MomClient MomServiceFactory.
- * - to create on demand message group service based on the existing service.
- * - to create new requests executors.
- * - to create new message group requests.
- *
+ * <p/>
+ * This is also the entry point :
+ * <br/> - to create new services via this MomClient MomServiceFactory.
+ * <br/> - to create on demand message group service based on the existing service.
+ * <br/> - to create new requests executors.
+ * <br/> - to create new message group requests.
+ * <p/>
  * The resources created through MomClient are intended to be stored on registries
  * to be properly managed while closing MomClient.
- *
+ * <p/>
  * Finally this is also the entry point to manage tuning configuration like :
- * - define the on message debug option on services
- * - define the RPC timeout (sec)
- * - define the RPC retry number
- *
+ * <br/> - define the on message debug option on services
+ * <br/> - define the RPC timeout (sec)
+ * <br/> - define the RPC retry number
+ * <p/>
  * Abstract implementation :
  * @see net.echinopsii.ariane.community.messaging.common.MomAkkaAbsClient
  *

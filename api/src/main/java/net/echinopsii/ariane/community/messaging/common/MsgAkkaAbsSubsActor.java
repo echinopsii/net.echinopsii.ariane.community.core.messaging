@@ -23,20 +23,34 @@ import akka.actor.UntypedActor;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 
+/**
+ * MsgAkkaAbsSubActor provides MoM provider agnostic method implementations for akka subscription actor implementation.
+ */
 public abstract class MsgAkkaAbsSubsActor extends UntypedActor {
 
     private MomMsgTranslator translator = null;
     private AppMsgWorker msgWorker   = null;
 
+    /**
+     * Constructor
+     * @param worker the message worker in charge of message treatment coming from the subscription
+     * @param translator_ the message translator to be used with this subscription actor
+     */
     public MsgAkkaAbsSubsActor(AppMsgWorker worker, MomMsgTranslator translator_) {
         msgWorker = worker;
         translator = translator_;
     }
 
+    /**
+     * @return the message translator attached to this subscription actor
+     */
     public MomMsgTranslator getTranslator() {
         return translator;
     }
 
+    /**
+     * @return the message worker in charge of message treatment
+     */
     public AppMsgWorker getMsgWorker() {
         return msgWorker;
     }

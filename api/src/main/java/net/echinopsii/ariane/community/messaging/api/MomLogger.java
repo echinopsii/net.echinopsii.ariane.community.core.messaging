@@ -26,20 +26,20 @@ import java.io.Serializable;
 import java.util.Map;
 
 /**
- * MomLogger interface extends traditional loggers interface to help log and debug message flow treatment on
+ * MomLogger interface extends slf4j logger interface to help log and debug message flow treatment on
  * the MomClient services.
- *
- * When trace level is enabled any log following the message flow will be printed (whatever the original
- * log level configured by class).
+ * <p/>
+ * When msg trace level is enabled any log following the message treatment will be printed (whatever the original
+ * log level configured by class) according to the message treatment thread ID.
  *
  */
 public interface MomLogger extends Serializable, Logger, LocationAwareLogger {
     /**
      * Define if the message trace will be available through the message treatment.
      * @param isTraceLevelEnabled
-     * @return
+     * @return this
      */
-    MomLogger setTraceLevel(boolean isTraceLevelEnabled);
+    MomLogger setMsgTraceLevel(boolean isTraceLevelEnabled);
 
     /**
      * Trace a message

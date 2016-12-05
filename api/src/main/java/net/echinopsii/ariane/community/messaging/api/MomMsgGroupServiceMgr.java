@@ -21,11 +21,11 @@ package net.echinopsii.ariane.community.messaging.api;
 
 /**
  * MomMsgGroupServiceMgr interface.
- *
+ * <p/>
  * Manage message group service through specific main service :
- * - store the opened message group service in a memory registry
- * - provide helper method to stop a message group service
- * - stop cleanly any message group service on final stop
+ * <br/> - store the opened message group service in a memory registry
+ * <br/> - provide helper method to stop a message group service
+ * <br/> - stop cleanly any message group service on final stop
  */
 public interface MomMsgGroupServiceMgr {
     /**

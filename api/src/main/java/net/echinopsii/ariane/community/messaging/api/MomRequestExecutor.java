@@ -24,11 +24,11 @@ import java.util.concurrent.TimeoutException;
 
 /**
  * MomRequestExecutor interface
- *
+ * <p/>
  * Provide simple method definition for :
- * - fire and forget request (no answer awaited)
- * - remote procedure call request where the answer will be treated by provided answer worker.
- *
+ * <br/> - fire and forget request (no answer awaited)
+ * <br/> - remote procedure call request where the answer will be treated by provided answer worker.
+ * <p/>
  * @param <Q> type of destination / source (could be a String or specific MoM queue)
  * @param <W> type of AppMsgWorker (where you push your business logic)
  */

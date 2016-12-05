@@ -23,7 +23,10 @@ package net.echinopsii.ariane.community.messaging.api;
 import java.util.List;
 
 /**
- *
+ * MomServiceFactory interface.
+ * <p/>
+ * MomServiceFactory is the main point to create new services which then are stored in a dedicated registry.
+ * <p/>
  * @param <SRV>
  * @param <W>
  * @param <F>
@@ -31,7 +34,7 @@ import java.util.List;
  */
 public interface MomServiceFactory<SRV extends MomService, W extends AppMsgWorker, F extends AppMsgFeeder, S> {
     /**
-     * Request worker from a source - can manage message grouping (usefull for mono-thread sessions)
+     * Request worker from a source - can manage message grouping
      * @param source the source where request are coming from
      * @param requestWorker the application request worker
      * @return service
@@ -50,7 +53,7 @@ public interface MomServiceFactory<SRV extends MomService, W extends AppMsgWorke
      * Feed message to a baseDestination
      * @param baseDestination the baseDestination (must be a topic)
      * @param feeder the application feeder building the message to feed
-     * @return service ref
+     * @return service
      */
     SRV feederService(S baseDestination, S selector, int interval, F feeder);
 
@@ -58,7 +61,7 @@ public interface MomServiceFactory<SRV extends MomService, W extends AppMsgWorke
      * Receive message from a feed source
      * @param source the feed source
      * @param feedWorker the feed message worker
-     * @return service ref
+     * @return service
      */
     SRV subscriberService(S source, S selector, W feedWorker);
 

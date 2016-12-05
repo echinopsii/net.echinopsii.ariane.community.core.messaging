@@ -49,7 +49,7 @@ public abstract class MomAkkaAbsServiceFactory implements MomServiceFactory<MomA
     }
 
     /**
-     * @return he MomAkkaAbsClient defined with this service factory.
+     * @return the MomAkkaAbsClient defined with this service factory.
      */
     public MomAkkaAbsClient getMomClient() { return momClient;}
 }

@@ -22,25 +22,24 @@ package net.echinopsii.ariane.community.messaging.api;
 
 /**
  * MomService interface.
- *
+ * <p/>
  * The service in charge of :
- *
+ * <br/>
  * - consuming message from Mom Broker resource (queue or subscription) and pushing to the actor in charge of the
  * message business treatment in the case of a request service.
- *
+ * <br/>
  * OR
- *
+ * <br/>
  * - feeding data regularly on a topic in the case of a feeder service
- *
+ * <p/>
  * @see net.echinopsii.ariane.community.messaging.api.MomServiceFactory
- *
+ * <p/>
  * In the case this service is a request service, a Message Group Service Manager can be attached to this service
  * to manage message treatment coming from a message group.
- *
  * @see net.echinopsii.ariane.community.messaging.api.MomMsgGroupServiceMgr
- *
+ * <p/>
  * @param <R> type of running reference (could be a thread id or an actor ref ....)
- *
+ * <p/>
  * Implementation with akka actors :
  * @see net.echinopsii.ariane.community.messaging.common.MomAkkaService
  * */

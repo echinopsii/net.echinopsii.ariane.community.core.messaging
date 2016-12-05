@@ -31,7 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * MomAkkaRequestRouter : an actor to dispatch requests to worker routees (round robin)
+ * MomAkkaRequestRouter is an actor to dispatch requests to worker routees (round robin)
  */
 public class MomAkkaRequestRouter extends UntypedActor {
 

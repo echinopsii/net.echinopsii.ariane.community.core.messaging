@@ -88,11 +88,11 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                                         setProperties(delivery.getProperties()).
                                         setBody(delivery.getBody()));
                                 if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE) && isMsgDebugOnTimeout)
-                                    ((MomLogger)log).setTraceLevel(true);
+                                    ((MomLogger)log).setMsgTraceLevel(true);
                                 ((MomLogger)log).traceMessage("MomConsumer(" + source + ").run", finalMessage);
                                 runnableReqActor.tell(delivery, null);
                                 if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE) && isMsgDebugOnTimeout)
-                                    ((MomLogger)log).setTraceLevel(false);
+                                    ((MomLogger)log).setMsgTraceLevel(false);
                             }
                         } catch (InterruptedException e) {
                             // no message

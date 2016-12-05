@@ -88,19 +88,19 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                             if (msg!=null && isRunning) {
                                 finalMessage = translator.decode(msg);
                                 if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE) && client.isMsgDebugOnTimeout())
-                                    ((MomLogger)log).setTraceLevel(true);
+                                    ((MomLogger)log).setMsgTraceLevel(true);
                                 ((MomLogger)log).traceMessage("MomConsumer(" + source + ").run", finalMessage);
                                 runnableReqActor.tell(msg, null);
                             }
                             if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE) && client.isMsgDebugOnTimeout())
-                                ((MomLogger)log).setTraceLevel(false);
+                                ((MomLogger)log).setMsgTraceLevel(false);
                         } catch (TimeoutException e) {
                             if (finalMessage!=null && client.isMsgDebugOnTimeout() &&
-                                    ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
+                                    ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setMsgTraceLevel(false);
                             log.debug("no message found during last 10 ms");
                         } catch (IllegalStateException | IOException | InterruptedException e) {
                             if (finalMessage!=null && client.isMsgDebugOnTimeout() &&
-                                    ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
+                                    ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setMsgTraceLevel(false);
                             if (isRunning) log.error("[source: " + source + "]" + e.getMessage());
                         }
                     }

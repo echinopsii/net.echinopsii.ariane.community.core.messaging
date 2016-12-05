@@ -27,7 +27,6 @@ package net.echinopsii.ariane.community.messaging.api;
  */
 public interface MomConsumer extends Runnable {
     /**
-     *
      * @return true if running else false
      */
     boolean isRunning();

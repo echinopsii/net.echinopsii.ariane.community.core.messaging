@@ -20,7 +20,6 @@
 package net.echinopsii.ariane.community.messaging.rabbitmq;
 
 import akka.actor.Props;
-import akka.actor.UntypedActor;
 import akka.japi.Creator;
 import com.rabbitmq.client.*;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
@@ -65,7 +64,7 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                     setProperties(properties).
                     setBody(body));
             if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) {
-                if (super.getClient().isMsgDebugOnTimeout()) ((MomLogger)log).setTraceLevel(true);
+                if (super.getClient().isMsgDebugOnTimeout()) ((MomLogger)log).setMsgTraceLevel(true);
                 else finalMessage.remove(MomMsgTranslator.MSG_TRACE);
             }
             ((MomLogger)log).traceMessage("MsgRequestActor.onReceive - in", finalMessage);
@@ -91,7 +90,7 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
             channel.basicAck(((QueueingConsumer.Delivery)message).getEnvelope().getDeliveryTag(), false);
 
             ((MomLogger)log).traceMessage("MsgRequestActor.onReceive - out", finalMessage);
-            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setTraceLevel(false);
+            if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setMsgTraceLevel(false);
         } else
             unhandled(message);
     }

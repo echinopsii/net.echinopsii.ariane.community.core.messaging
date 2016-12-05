@@ -24,10 +24,10 @@ import java.util.Map;
 
 /**
  * MomMsgTranslator interface.
- *
+ * <p/>
  * Provide message fields, error codes and method definitions to encode / decode Map<String, Object> message to/from
  * specific MoM broker implementation.
- *
+ * <p/>
  * @param <M> the MoM broker message type
  */
 public interface MomMsgTranslator<M> {

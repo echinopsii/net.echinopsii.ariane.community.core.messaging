@@ -24,15 +24,16 @@ import java.util.Map;
 
 /**
  * AppMsgWorker interface.
- *
+ * <p/>
+ * Dedicated to define message treatment logic in the apply() method which will be called by the messaging tooling.
  * Any class implementing AppMsgWorker can be passed through following messaging tooling:
- *
+ * <p/>
  * - request tooling
  * @see net.echinopsii.ariane.community.messaging.api.MomRequestExecutor
- *
+ * <p/>
  * - service tooling
  * @see net.echinopsii.ariane.community.messaging.api.MomServiceFactory
- *
+ * <p/>
  * AppMsgWorker are MoM broker agnostic : the message definition for an AppMsgWorker is a simple Map<String, Object>.
  * @see net.echinopsii.ariane.community.messaging.api.MomMsgTranslator to know more on internal implementation.
  */

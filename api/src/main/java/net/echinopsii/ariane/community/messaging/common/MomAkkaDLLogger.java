@@ -24,7 +24,7 @@ import akka.japi.Creator;
 import org.slf4j.Logger;
 
 /**
- * MomAkkaDLLogger : an actor to log dead letter
+ * MomAkkaDLLogger is an actor to log dead letter
  */
 public class MomAkkaDLLogger extends UntypedActor {
 
@@ -55,7 +55,7 @@ public class MomAkkaDLLogger extends UntypedActor {
     public void onReceive(Object message) {
         if (message instanceof DeadLetter) {
             final DeadLetter d = (DeadLetter) message;
-            log.warn("DeadLetter " + d.message().toString() + " received. Recipient was " + d.recipient().path().name() + " .");
+            if (!d.message().equals("stop_soon")) log.warn("DeadLetter " + d.message().toString() + " received. Recipient was " + d.recipient().path().name() + " .");
         } else {
             unhandled(message);
         }

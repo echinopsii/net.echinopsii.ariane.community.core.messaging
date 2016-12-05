@@ -23,21 +23,21 @@ package net.echinopsii.ariane.community.messaging.api;
 import java.util.Map;
 
 /**
- *
+ * AppMsgFeeder interface.
+ * <p/>
+ * Dedicated to generate message to feed (in the apply method)
  */
 public interface AppMsgFeeder {
 
     String MSG_FEED_NOW = "FEED_NOW";
 
     /**
-     *
-     * @return
+     * @return the next message to feed
      */
     Map<String, Object> apply();
 
     /**
-     *
-     * @return
+     * @return the interval between each message feed
      */
     int getInterval();
 }

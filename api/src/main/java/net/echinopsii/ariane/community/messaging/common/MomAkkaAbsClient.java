@@ -31,24 +31,24 @@ import java.util.*;
 
 /**
  * MomAkkaAbsClient provides an abstract implementation of MomClient interface based on actors model and Akka.
- *
+ * <p/>
  * As a MomClient abstract implementation, it provides MoM provider agnostic tooling implementation like :
- * - the clientID definition
- * - link to the ServiceFactory to create new services besides this MomClient
- * - registries for requests executors, messages groups requests and messages groups services
- * - MomClient configuration with setter/getter. Default values :
- * --- msgDebugOnTimeout = false
- * --- rpcTimeout = 10 (sec)
- * --- rpcRetry   = 3
- *
+ * <br/>- the clientID definition
+ * <br/> - link to the ServiceFactory to create new services besides this MomClient
+ * <br/> - registries for requests executors, messages groups requests and messages groups services
+ * <br/> - MomClient configuration with setter/getter. Default values :
+ * <br/> --- msgDebugOnTimeout = false
+ * <br/> --- rpcTimeout = 10 (sec)
+ * <br/> --- rpcRetry   = 3
+ * <p/>
  * MomAkkaAbsClient use actors model pattern to manage the MomClient entities (services or requests executors).
- * On top of the MomClient actors hierarchy you will find :
- * - the akka system actors (root guardian, system guardian and user guardian).
- * - a dead letter logger actor to print any lost message in the system (parent is user guardian)
- * - a main supervisor dedicated to supervise and cleanly close the MomClient main services and requests executors actors.
- * - message group services supervisors to supervise and cleanly close the MomClient services dedicated to a
+ * <br/> On top of the MomClient actors hierarchy you will find :
+ * <br/> - the akka system actors (root guardian, system guardian and user guardian).
+ * <br/> - a dead letter logger actor to print any lost message in the system (parent is user guardian)
+ * <br/> - a main supervisor dedicated to supervise and cleanly close the MomClient main services and requests executors actors.
+ * <br/> - message group services supervisors to supervise and cleanly close the MomClient services dedicated to a
  * message group.
- *
+ * <p/>
  * MomAkkaAbsClient also provide an actor specific configuration for services : the routees count per service.
  * Indeed when creating new service you may want to define several worker actors to dispatch treatment load on these
  * actors. To do so Akka provide router/routees actors pattern to help (the router will forward request to the routees

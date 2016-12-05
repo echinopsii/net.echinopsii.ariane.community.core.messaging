@@ -29,6 +29,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * MomLogger extends slf4j Logger to to help log and debug message flow treatment on
+ * the MomClient services.
+ * <p/>
+ * When msg trace level is enabled any log following the message flow will be printed (whatever the original
+ * log level configured by class).
+ *
+ */
 public class MomLogger implements net.echinopsii.ariane.community.messaging.api.MomLogger {
 
     private static volatile List<Long> itlEnabledPerThread = new ArrayList<>();
@@ -54,12 +62,12 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
 
     @Override
     public boolean isTraceEnabled() {
-        return (this.isTraceLevelEnabled() || log.isTraceEnabled());
+        return (this.isMsgTraceLevelEnabled() || log.isTraceEnabled());
     }
 
     @Override
     public void trace(String msg) {
-        if (this.isTraceLevelEnabled()) this.log(null, FQCN, LEVEL_TRACE, msg, null, null);
+        if (this.isMsgTraceLevelEnabled()) this.log(null, FQCN, LEVEL_TRACE, msg, null, null);
         else log.trace(msg);
     }
 
@@ -85,7 +93,7 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
 
     @Override
     public boolean isTraceEnabled(Marker marker) {
-        return (this.isTraceLevelEnabled() || log.isTraceEnabled(marker));
+        return (this.isMsgTraceLevelEnabled() || log.isTraceEnabled(marker));
     }
 
     @Override
@@ -115,7 +123,7 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
 
     @Override
     public void debug(String msg) {
-        if (this.isTraceLevelEnabled()) this.log(null, FQCN, LEVEL_DEBUG, msg, null, null);
+        if (this.isMsgTraceLevelEnabled()) this.log(null, FQCN, LEVEL_DEBUG, msg, null, null);
         else log.debug(msg);
     }
 
@@ -141,12 +149,12 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
 
     @Override
     public boolean isDebugEnabled() {
-        return (!this.isTraceLevelEnabled() && log.isDebugEnabled());
+        return (!this.isMsgTraceLevelEnabled() && log.isDebugEnabled());
     }
 
     @Override
     public boolean isDebugEnabled(Marker marker) {
-        return (!this.isTraceLevelEnabled() && log.isDebugEnabled(marker));
+        return (!this.isMsgTraceLevelEnabled() && log.isDebugEnabled(marker));
     }
 
     @Override
@@ -176,12 +184,12 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
 
     @Override
     public boolean isInfoEnabled() {
-        return !this.isTraceLevelEnabled() && log.isInfoEnabled();
+        return !this.isMsgTraceLevelEnabled() && log.isInfoEnabled();
     }
 
     @Override
     public void info(String msg) {
-        if (this.isTraceLevelEnabled()) this.log(null, FQCN, LEVEL_INFO, msg, null, null);
+        if (this.isMsgTraceLevelEnabled()) this.log(null, FQCN, LEVEL_INFO, msg, null, null);
         else log.info(msg);
     }
 
@@ -207,7 +215,7 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
 
     @Override
     public boolean isInfoEnabled(Marker marker) {
-        return !this.isTraceLevelEnabled() && log.isInfoEnabled(marker);
+        return !this.isMsgTraceLevelEnabled() && log.isInfoEnabled(marker);
     }
 
     @Override
@@ -237,12 +245,12 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
 
     @Override
     public boolean isWarnEnabled() {
-        return (!this.isTraceLevelEnabled() && log.isWarnEnabled());
+        return (!this.isMsgTraceLevelEnabled() && log.isWarnEnabled());
     }
 
     @Override
     public void warn(String msg) {
-        if (this.isTraceLevelEnabled()) this.log(null, FQCN, LEVEL_WARN, msg, null, null);
+        if (this.isMsgTraceLevelEnabled()) this.log(null, FQCN, LEVEL_WARN, msg, null, null);
         else log.warn(msg);
     }
 
@@ -268,7 +276,7 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
 
     @Override
     public boolean isWarnEnabled(Marker marker) {
-        return (!this.isTraceLevelEnabled() && log.isWarnEnabled(marker));
+        return (!this.isMsgTraceLevelEnabled() && log.isWarnEnabled(marker));
     }
 
     @Override
@@ -298,12 +306,12 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
 
     @Override
     public boolean isErrorEnabled() {
-        return (!this.isTraceLevelEnabled() && log.isErrorEnabled());
+        return (!this.isMsgTraceLevelEnabled() && log.isErrorEnabled());
     }
 
     @Override
     public void error(String msg) {
-        if (this.isTraceLevelEnabled()) this.log(null, FQCN, LEVEL_ERROR, msg, null, null);
+        if (this.isMsgTraceLevelEnabled()) this.log(null, FQCN, LEVEL_ERROR, msg, null, null);
         else log.error(msg);
     }
 
@@ -329,7 +337,7 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
 
     @Override
     public boolean isErrorEnabled(Marker marker) {
-        return (!this.isTraceLevelEnabled() && isErrorEnabled(marker));
+        return (!this.isMsgTraceLevelEnabled() && isErrorEnabled(marker));
     }
 
     @Override
@@ -358,7 +366,7 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
     }
 
     @Override
-    public net.echinopsii.ariane.community.messaging.api.MomLogger setTraceLevel(boolean isTraceLevelEnabled) {
+    public net.echinopsii.ariane.community.messaging.api.MomLogger setMsgTraceLevel(boolean isTraceLevelEnabled) {
         if (isTraceLevelEnabled && !itlEnabledPerThread.contains(Thread.currentThread().getId())) itlEnabledPerThread.add(Thread.currentThread().getId());
         else if (!isTraceLevelEnabled) itlEnabledPerThread.remove(Thread.currentThread().getId());
         return this;
@@ -373,14 +381,14 @@ public class MomLogger implements net.echinopsii.ariane.community.messaging.api.
         this.trace(opsName + " - " + tracedMessage.toString());
     }
 
-    public boolean isTraceLevelEnabled() {
+    public boolean isMsgTraceLevelEnabled() {
         long threadID = Thread.currentThread().getId();
         return (itlEnabledPerThread.contains(threadID));
     }
 
     @Override
     public void log(Marker marker, String fqcn, int level, String message, Object[] argArray, Throwable t) {
-        if (this.isTraceLevelEnabled()) {
+        if (this.isMsgTraceLevelEnabled()) {
             if (log.isTraceEnabled()) log.trace("[ " + Thread.currentThread().getName() + " | MSG TRACE ]" + message);
             else if (log.isDebugEnabled()) log.debug("[ " + Thread.currentThread().getName() + " | MSG TRACE ]" + message);
             else if (log.isInfoEnabled()) log.info("[ " + Thread.currentThread().getName() + " | MSG TRACE ]" + message);
