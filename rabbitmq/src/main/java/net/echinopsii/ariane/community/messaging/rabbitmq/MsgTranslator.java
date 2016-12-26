@@ -42,11 +42,6 @@ public class MsgTranslator implements MomMsgTranslator<Message>{
     public final static String MSG_RBQ_USER_ID          = "MSG_RBQ_USER_ID";
 
     @Override
-    public Map<String, Class> getMessageTypo() {
-        return null;
-    }
-
-    @Override
     public Message encode(Map<String, Object> message) {
         AMQP.BasicProperties.Builder propsBuilder = new AMQP.BasicProperties.Builder();
         Map<String,Object> headerFields = new HashMap<String, Object>();
