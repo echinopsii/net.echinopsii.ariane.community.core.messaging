@@ -110,12 +110,12 @@ public class FireAndForgetTest {
             }
 
             TestMsgWorker test = new TestMsgWorker(highPayloadBody);
-            client.getServiceFactory().requestService("FAF_SUBJECT", test);
+            client.getServiceFactory().requestService("FAF_SUBJECT_SPLIT", test);
 
             Map<String, Object> message = new HashMap<>();
             message.put(MomMsgTranslator.MSG_BODY, highPayloadBody);
             //System.out.println(highPayloadBody.length);
-            client.createRequestExecutor().FAF(message, "FAF_SUBJECT");
+            client.createRequestExecutor().FAF(message, "FAF_SUBJECT_SPLIT");
 
             Thread.sleep(1000);
 
