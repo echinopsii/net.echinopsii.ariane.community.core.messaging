@@ -34,6 +34,8 @@ import java.util.Map;
 
 public class MsgRequestActor extends MsgAkkaAbsRequestActor {
     private static final Logger log = MomLoggerFactory.getLogger(MsgRequestActor.class);
+    private static HashMap<String, Integer> wipMsgCount = new HashMap<>();
+    private static HashMap<String, Message[]> wipMsg = new HashMap<>();
 
     public static Props props(final Client mclient, final AppMsgWorker worker, final boolean cache) {
         return Props.create(new Creator<MsgRequestActor>() {
@@ -49,9 +51,6 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
     public MsgRequestActor(Client mclient, AppMsgWorker worker, boolean cache) {
         super(mclient, worker, new MsgTranslator(), cache);
     }
-
-    HashMap<String, Integer> wipMsgCount = new HashMap<>();
-    HashMap<String, Message[]> wipMsg = new HashMap<>();
 
     @Override
     public void onReceive(Object message) throws Exception {
@@ -73,8 +72,11 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                         wipMsg.put(msgSplitID, wipMsgChunks);
                         wipMsgCount.put(msgSplitID, 0);
                     } else wipMsgChunks = wipMsg.get(msgSplitID);
+
                     wipMsgChunks[(int)((HashMap)tasteMessage).get(MomMsgTranslator.MSG_SPLIT_OID)] = (Message) message;
-                    wipMsgCount.put(msgSplitID, wipMsgCount.get(msgSplitID) + 1);
+                    int count = wipMsgCount.get(msgSplitID) + 1;
+                    wipMsgCount.put(msgSplitID, count);
+
                     if (wipMsgCount.get(msgSplitID).equals((int) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT))) {
                         finalMessage = ((MsgTranslator) super.getTranslator()).decode(wipMsgChunks);
                         wipMsg.remove(msgSplitID);

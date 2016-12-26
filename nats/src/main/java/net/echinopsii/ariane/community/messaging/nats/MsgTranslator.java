@@ -213,6 +213,7 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
             wipMsgField.remove(MSG_BODY);
             wipMsgField.remove(MSG_NATS_SUBJECT);
             wipMsgField.remove(MSG_REPLY_TO);
+            wipMsgField.remove(MSG_TRACE);
 
             int consumedBodyOffset = 0;
             byte[] wipBody = null;
@@ -230,6 +231,7 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
                 wipENATSMsg.getProperties().put(MSG_SPLIT_MID, splitMID);
                 wipENATSMsg.getProperties().put(MSG_SPLIT_COUNT, Integer.MAX_VALUE); //TO BE REDEFINE
                 wipENATSMsg.getProperties().put(MSG_SPLIT_OID, splitOID);
+                if (message.get(MSG_TRACE)!=null) wipENATSMsg.getProperties().put(MSG_TRACE, message.get(MSG_TRACE));
 
                 // push properties first
                 for (String key: message.keySet()) {
@@ -315,7 +317,7 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
                     decodedMessage.putAll(extendedNATSMessage.getProperties());
                     if (extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) == null || extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) == 1)
                         decodedMessage.put(MSG_BODY, extendedNATSMessage.getBody());
-                    else if (extendedNATSMessage.getBody() != null) {
+                    else if (((int)extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT)) == message.length && extendedNATSMessage.getBody() != null) {
                         if (bodyChunks==null) bodyChunks = new byte[(int)extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT)][];
                         bodyChunks[(int) extendedNATSMessage.getProperties().get(MSG_SPLIT_OID)] = extendedNATSMessage.getBody();
                     }
@@ -332,7 +334,9 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
 
         if (bodyChunks!=null) {
             int bodySize = 0;
-            for (byte[] bodyChunk : bodyChunks) bodySize += bodyChunk.length;
+            for (byte[] bodyChunk : bodyChunks) {
+                bodySize += bodyChunk.length;
+            }
             byte[] reconstructedBody = new byte[bodySize];
             int idx = 0;
             for (byte[] bodyChunk : bodyChunks)

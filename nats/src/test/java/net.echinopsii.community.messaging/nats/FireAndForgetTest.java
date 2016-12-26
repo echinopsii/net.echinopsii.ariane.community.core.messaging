@@ -101,7 +101,6 @@ public class FireAndForgetTest {
         }
     }
 
-    /*
     @Test
     public void testHighPayloadFireAndForget() throws InterruptedException {
         if (client!=null) {
@@ -118,10 +117,9 @@ public class FireAndForgetTest {
             //System.out.println(highPayloadBody.length);
             client.createRequestExecutor().FAF(message, "FAF_SUBJECT");
 
-            Thread.sleep(5000);
+            Thread.sleep(1000);
 
             assertTrue(test.isOK());
         }
     }
-    */
 }
