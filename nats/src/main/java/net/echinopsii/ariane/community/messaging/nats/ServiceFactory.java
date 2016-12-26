@@ -86,7 +86,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                         try {
                             Message msg = subs.nextMessage(10);
                             if (msg!=null && isRunning) {
-                                finalMessage = translator.decode(msg);
+                                finalMessage = translator.decode(new Message[]{msg});
                                 if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE) && client.isMsgDebugOnTimeout())
                                     ((MomLogger)log).setMsgTraceLevel(true);
                                 ((MomLogger)log).traceMessage("MomConsumer(" + source + ").run", finalMessage);

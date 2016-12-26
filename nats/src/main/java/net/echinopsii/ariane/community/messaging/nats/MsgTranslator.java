@@ -33,15 +33,58 @@ import org.slf4j.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.lang.reflect.Array;
+import java.util.*;
 
-public class MsgTranslator implements MomMsgTranslator<Message> {
+public class MsgTranslator implements MomMsgTranslator<Message[]> {
     private static final Logger log = MomLoggerFactory.getLogger(MsgTranslator.class);
 
     public final static String MSG_NATS_SUBJECT = "MSG_NATS_SUBJECT";
+    public static long MSG_MAX_SIZE = 0;
+
+    public static void setMsgMaxSize(long maxPayload) {
+        MSG_MAX_SIZE = maxPayload;
+    }
+
+
+
+    private static int getBSONMsgPayloadSize(Map<String, Object> msg) {
+        int ret = 0;
+        HashMap<String, Object> propMap = new HashMap<>(msg);
+        propMap.remove(MSG_BODY);
+        propMap.remove(MSG_NATS_SUBJECT);
+        propMap.remove(MSG_REPLY_TO);
+
+        Object bodyObject = msg.get(MSG_BODY);
+        byte[] body = null;
+
+        if (bodyObject!=null) {
+            if (bodyObject instanceof String)
+                body = ((String) msg.get(MSG_BODY)).getBytes();
+            else if (bodyObject instanceof byte[])
+                body = (byte[]) bodyObject;
+        }
+
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+        JsonGenerator jgenerator = null;
+        try {
+            jgenerator = ToolBox.jFactory.createJsonGenerator(outStream, JsonEncoding.UTF8);
+            jgenerator.writeStartObject();
+            jgenerator.writeArrayFieldStart("properties");
+            for (PropertiesJSON.TypedPropertyField field : PropertiesJSON.propertiesToTypedPropertiesList(propMap))
+                field.toJSON(jgenerator);
+            jgenerator.writeEndArray();
+            if (body!=null) jgenerator.writeBinaryField("body", body);
+            jgenerator.writeEndObject();
+            jgenerator.close();
+            ret = ToolBox.getOuputStreamContent(outStream, "UTF-8").getBytes().length;
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (PropertiesException e) {
+            e.printStackTrace();
+        }
+        return ret;
+    }
 
     class ExtendedNATSMessage {
         HashMap<String, Object> properties = new HashMap<>();
@@ -63,21 +106,26 @@ public class MsgTranslator implements MomMsgTranslator<Message> {
             this.body = body;
         }
 
-        public byte[] toBSON() throws IOException, PropertiesException {
+        public byte[] toBSON() {
             ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-            JsonGenerator jgenerator = ToolBox.jFactory.createJsonGenerator(outStream, JsonEncoding.UTF8);
-            jgenerator.writeStartObject();
-            //jgenerator.writeObjectFieldStart("properties");
-            //PropertiesJSON.propertiesToJSON(properties, jgenerator);
-            //jgenerator.writeEndObject();
-            jgenerator.writeArrayFieldStart("properties");
-            for (PropertiesJSON.TypedPropertyField field : PropertiesJSON.propertiesToTypedPropertiesList(properties))
-                field.toJSON(jgenerator);
-            jgenerator.writeEndArray();
-            if (this.body!=null)jgenerator.writeBinaryField("body", this.body);
-            jgenerator.writeEndObject();
-            jgenerator.close();
-            String result = ToolBox.getOuputStreamContent(outStream, "UTF-8");
+            String result = "";
+            JsonGenerator jgenerator = null;
+            try {
+                jgenerator = ToolBox.jFactory.createJsonGenerator(outStream, JsonEncoding.UTF8);
+                jgenerator.writeStartObject();
+                jgenerator.writeArrayFieldStart("properties");
+                for (PropertiesJSON.TypedPropertyField field : PropertiesJSON.propertiesToTypedPropertiesList(properties))
+                    field.toJSON(jgenerator);
+                jgenerator.writeEndArray();
+                if (this.body!=null)jgenerator.writeBinaryField("body", this.body);
+                jgenerator.writeEndObject();
+                jgenerator.close();
+                result = ToolBox.getOuputStreamContent(outStream, "UTF-8");
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (PropertiesException e) {
+                e.printStackTrace();
+            }
             return result.getBytes();
         }
     }
@@ -121,54 +169,178 @@ public class MsgTranslator implements MomMsgTranslator<Message> {
     }
 
     @Override
-    public Map<String, Class> getMessageTypo() {
-        return null;
-    }
+    public Message[] encode(Map<String, Object> message) {
+        Message[] ret = null;
 
-    @Override
-    public Message encode(Map<String, Object> message) {
-        Message ret = new Message();
-        ExtendedNATSMessage extendedNATSMessage = new ExtendedNATSMessage();
+        int bsonMsgPayloadSize =  ((message.get(MSG_REPLY_TO)!=null) ? MSG_REPLY_TO.getBytes().length + message.get(MSG_REPLY_TO).toString().getBytes().length : 0) +
+                                  ((message.get(MSG_NATS_SUBJECT)!=null) ? MSG_NATS_SUBJECT.getBytes().length + message.get(MSG_NATS_SUBJECT).toString().getBytes().length : 0);;
+        int natsPropsSize = getBSONMsgPayloadSize(message);
 
-        for (String key : message.keySet()) {
-            if (key.equals(MSG_REPLY_TO)) {
-                ret.setReplyTo((String)message.get(MSG_REPLY_TO));
-            } else if (key.equals(MSG_NATS_SUBJECT)) {
-                ret.setSubject((String) message.get(MSG_NATS_SUBJECT));
-            } else if (key.equals(MSG_BODY)) {
-                Object bodyObject = message.get(MSG_BODY);
-                if (bodyObject instanceof String)
-                    extendedNATSMessage.setBody(((String) message.get(MSG_BODY)).getBytes());
-                else if (bodyObject instanceof byte[])
-                    extendedNATSMessage.setBody((byte []) bodyObject);
-            } else extendedNATSMessage.getProperties().put(key, message.get(key));
+        if (bsonMsgPayloadSize < (MSG_MAX_SIZE - natsPropsSize)) {
+            Message finalMessage = new Message();
+            ExtendedNATSMessage extendedNATSMessage = new ExtendedNATSMessage();
+            for (String key : message.keySet()) {
+                switch (key) {
+                    case MSG_REPLY_TO:
+                        finalMessage.setReplyTo((String) message.get(MSG_REPLY_TO));
+                        break;
+                    case MSG_NATS_SUBJECT:
+                        finalMessage.setSubject((String) message.get(MSG_NATS_SUBJECT));
+                        break;
+                    case MSG_BODY:
+                        Object bodyObject = message.get(MSG_BODY);
+                        if (bodyObject instanceof String)
+                            extendedNATSMessage.setBody(((String) message.get(MSG_BODY)).getBytes());
+                        else if (bodyObject instanceof byte[])
+                            extendedNATSMessage.setBody((byte[]) bodyObject);
+                        break;
+                    default:
+                        extendedNATSMessage.getProperties().put(key, message.get(key));
+                        break;
+                }
+            }
+
+            byte[] data = extendedNATSMessage.toBSON();
+            finalMessage.setData(data);
+            ret = new Message[]{finalMessage};
+        } else {
+            String splitMID = null;
+            synchronized (UUID.class) {
+                splitMID = UUID.randomUUID().toString();
+            }
+
+            HashMap<String, Object> wipMsgField = new HashMap<>(message);
+            wipMsgField.remove(MSG_BODY);
+            wipMsgField.remove(MSG_NATS_SUBJECT);
+            wipMsgField.remove(MSG_REPLY_TO);
+
+            int consumedBodyOffset = 0;
+            byte[] wipBody = null;
+            int wipBodyLength = 0;
+            Object bodyObject = message.get(MSG_BODY);
+            if (bodyObject != null && bodyObject instanceof String) wipBody = ((String) message.get(MSG_BODY)).getBytes();
+            else if (bodyObject != null && bodyObject instanceof byte[]) wipBody = (byte[]) bodyObject;
+            if (wipBody!=null) wipBodyLength = wipBody.length;
+
+            ArrayList<ExtendedNATSMessage> splittedENATSMsg = new ArrayList<>();
+            int splitOID = 0;
+            while((wipBodyLength - consumedBodyOffset)>0 || wipMsgField.size()>0) {
+                int wipENATSMsgLength = 0;
+                ExtendedNATSMessage wipENATSMsg = new ExtendedNATSMessage();
+                wipENATSMsg.getProperties().put(MSG_SPLIT_MID, splitMID);
+                wipENATSMsg.getProperties().put(MSG_SPLIT_COUNT, Integer.MAX_VALUE); //TO BE REDEFINE
+                wipENATSMsg.getProperties().put(MSG_SPLIT_OID, splitOID);
+
+                // push properties first
+                for (String key: message.keySet()) {
+                    if (wipMsgField.containsKey(key)) {
+                        wipENATSMsg.getProperties().put(key, message.get(key));
+                        wipENATSMsgLength = wipENATSMsg.toBSON().length;
+                        if (wipENATSMsgLength < MSG_MAX_SIZE)
+                            wipMsgField.remove(key);
+                        else wipENATSMsg.getProperties().remove(key);
+                    }
+                }
+
+                // if some place left on wipENATSMsg push some chunk from body
+                if (wipBodyLength > 0) {
+                    wipENATSMsgLength = wipENATSMsg.toBSON().length;
+
+                    int reduction = 0;
+                    int chunkSize = (int) (MSG_MAX_SIZE - wipENATSMsgLength);
+                    if (consumedBodyOffset + chunkSize > wipBodyLength) chunkSize = wipBodyLength-consumedBodyOffset;
+                    byte[] chunkBody = new byte[chunkSize];
+
+                    int bodyIdx = 0;
+                    for (int b = consumedBodyOffset; b<(consumedBodyOffset+chunkSize); b++) {
+                        chunkBody[bodyIdx] = wipBody[b];
+                        bodyIdx++;
+                    }
+                    wipENATSMsg.setBody(chunkBody);
+                    wipENATSMsgLength = wipENATSMsg.toBSON().length;
+
+                    while (wipENATSMsgLength > MSG_MAX_SIZE) {
+                        ++reduction;
+                        chunkSize -= chunkSize*((double)reduction/(double)10);
+                        if (consumedBodyOffset + chunkSize > wipBodyLength) chunkSize = wipBodyLength-consumedBodyOffset;
+                        chunkBody = new byte[chunkSize];
+                        bodyIdx = 0;
+                        for (int b = consumedBodyOffset; b<(consumedBodyOffset+chunkSize); b++) {
+                            chunkBody[bodyIdx] = wipBody[b];
+                            bodyIdx++;
+                        }
+                        wipENATSMsg.setBody(chunkBody);
+                        wipENATSMsgLength = wipENATSMsg.toBSON().length;
+                    }
+
+                    consumedBodyOffset+=bodyIdx;
+                }
+
+                splittedENATSMsg.add(splitOID, wipENATSMsg);
+                splitOID++;
+            }
+
+            int splitCount = splittedENATSMsg.size();
+            ret = new Message[splitCount];
+            for (int i=0; i<splittedENATSMsg.size(); i++) {
+                Message splittedMessage = new Message();
+                if (message.get(MSG_NATS_SUBJECT)!=null) splittedMessage.setSubject((String) message.get(MSG_NATS_SUBJECT));
+                if (message.get(MSG_REPLY_TO)!=null) splittedMessage.setReplyTo((String) message.get(MSG_REPLY_TO));
+
+                ExtendedNATSMessage extendedNATSMessage = splittedENATSMsg.get(i);
+                extendedNATSMessage.getProperties().put(MSG_SPLIT_COUNT, splitCount);
+
+                byte[] data = extendedNATSMessage.toBSON();
+                splittedMessage.setData(data);
+                ret[i] = splittedMessage;
+            }
         }
-
-        byte[] data = null;
-        try {
-            data = extendedNATSMessage.toBSON();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (PropertiesException e) {
-            e.printStackTrace();
-        }
-        if (data!=null) ret.setData(data);
 
         return ret;
     }
 
     @Override
-    public Map<String, Object> decode(Message message) {
+    public Map<String, Object> decode(Message[] message) {
         LinkedHashMap<String, Object> decodedMessage = new LinkedHashMap();
-        ExtendedNATSMessage extendedNATSMessage = null;
-        try {
-            extendedNATSMessage = this.fromJSON(message.getData());
-            decodedMessage.put(MSG_REPLY_TO, message.getReplyTo());
-            decodedMessage.put(MSG_NATS_SUBJECT, message.getSubject());
-            decodedMessage.putAll(extendedNATSMessage.getProperties());
-            decodedMessage.put(MSG_BODY, extendedNATSMessage.getBody());
-        } catch (Exception e) {
-            e.printStackTrace();
+        byte[][] bodyChunks = null;
+
+        boolean initDone = false;
+
+        for (Message messagePart : message) {
+            try {
+                ExtendedNATSMessage extendedNATSMessage = this.fromJSON(messagePart.getData());
+                if (!initDone) {
+                    decodedMessage.put(MSG_REPLY_TO, messagePart.getReplyTo());
+                    decodedMessage.put(MSG_NATS_SUBJECT, messagePart.getSubject());
+                    decodedMessage.putAll(extendedNATSMessage.getProperties());
+                    if (extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) == null || extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) == 1)
+                        decodedMessage.put(MSG_BODY, extendedNATSMessage.getBody());
+                    else if (extendedNATSMessage.getBody() != null) {
+                        if (bodyChunks==null) bodyChunks = new byte[(int)extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT)][];
+                        bodyChunks[(int) extendedNATSMessage.getProperties().get(MSG_SPLIT_OID)] = extendedNATSMessage.getBody();
+                    }
+                    initDone = true;
+                } else {
+                    decodedMessage.putAll(extendedNATSMessage.getProperties());
+                    if (bodyChunks==null) bodyChunks = new byte[(int)extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT)][];
+                    bodyChunks[(int) extendedNATSMessage.getProperties().get(MSG_SPLIT_OID)] = extendedNATSMessage.getBody();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (bodyChunks!=null) {
+            int bodySize = 0;
+            for (byte[] bodyChunk : bodyChunks) bodySize += bodyChunk.length;
+            byte[] reconstructedBody = new byte[bodySize];
+            int idx = 0;
+            for (byte[] bodyChunk : bodyChunks)
+                for (byte bodyChunkB : bodyChunk) {
+                    reconstructedBody[idx] = bodyChunkB;
+                    idx++;
+                }
+            decodedMessage.put(MSG_BODY, reconstructedBody);
         }
         return decodedMessage;
     }

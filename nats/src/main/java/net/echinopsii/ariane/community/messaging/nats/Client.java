@@ -71,6 +71,7 @@ public class Client extends MomAkkaAbsClient implements MomClient {
         if (properties.get(NATS_CONNECTION_NAME)!=null)
             factory.setConnectionName((String) properties.get(NATS_CONNECTION_NAME));
         connection = factory.createConnection();
+        MsgTranslator.setMsgMaxSize(connection.getMaxPayload());
 
         super.setServiceFactory(new ServiceFactory(this));
     }

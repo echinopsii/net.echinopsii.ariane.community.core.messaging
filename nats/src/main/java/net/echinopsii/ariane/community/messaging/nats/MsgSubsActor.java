@@ -49,7 +49,7 @@ public class MsgSubsActor extends MsgAkkaAbsSubsActor {
     @Override
     public void onReceive(Object message) throws Exception {
         if (message instanceof Message) {
-            Map<String, Object> finalMessage = ((MsgTranslator) super.getTranslator()).decode((Message) message);
+            Map<String, Object> finalMessage = ((MsgTranslator) super.getTranslator()).decode(new Message[]{(Message) message});
             super.getMsgWorker().apply(finalMessage);
         } else
             unhandled(message);

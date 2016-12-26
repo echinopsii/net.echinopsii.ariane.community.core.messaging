@@ -28,6 +28,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -59,15 +61,20 @@ public class FireAndForgetTest {
     }
 
     final static String sendedMsgBody = "Hello NATS";
+    final static byte[] highPayloadBody = new byte[2000000];
 
     class TestMsgWorker implements AppMsgWorker {
-
         boolean OK = false;
+        byte[] msgBody = null;
+
+        public TestMsgWorker(byte[] msgBody_) {
+            this.msgBody = msgBody_;
+        }
 
         @Override
         public Map<String, Object> apply(Map<String, Object> message) {
-            String recvMsgBody = new String((byte [])message.get(MomMsgTranslator.MSG_BODY));
-            if (recvMsgBody.equals(sendedMsgBody))
+            byte[] recvMsgBody = (byte [])message.get(MomMsgTranslator.MSG_BODY);
+            if (Arrays.equals(recvMsgBody, this.msgBody))
                 OK = true;
             return null;
         }
@@ -80,7 +87,7 @@ public class FireAndForgetTest {
     @Test
     public void testFireAndForget() throws InterruptedException {
         if (client!=null) {
-            TestMsgWorker test = new TestMsgWorker();
+            TestMsgWorker test = new TestMsgWorker(sendedMsgBody.getBytes());
 
             client.getServiceFactory().requestService("FAF_SUBJECT", test);
 
@@ -94,4 +101,27 @@ public class FireAndForgetTest {
         }
     }
 
+    /*
+    @Test
+    public void testHighPayloadFireAndForget() throws InterruptedException {
+        if (client!=null) {
+            for (int i=0; i < highPayloadBody.length; i+=4) {
+                byte[] intBytes = ByteBuffer.allocate(4).putInt(i).array();
+                for (int j=0; j < 4; j++) highPayloadBody[i+j] = intBytes[j];
+            }
+
+            TestMsgWorker test = new TestMsgWorker(highPayloadBody);
+            client.getServiceFactory().requestService("FAF_SUBJECT", test);
+
+            Map<String, Object> message = new HashMap<>();
+            message.put(MomMsgTranslator.MSG_BODY, highPayloadBody);
+            //System.out.println(highPayloadBody.length);
+            client.createRequestExecutor().FAF(message, "FAF_SUBJECT");
+
+            Thread.sleep(5000);
+
+            assertTrue(test.isOK());
+        }
+    }
+    */
 }

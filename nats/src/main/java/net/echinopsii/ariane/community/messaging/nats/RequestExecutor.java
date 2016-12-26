@@ -50,12 +50,14 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     public Map<String, Object> FAF(Map<String, Object> request, String destination) {
         String groupID = super.getMomClient().getCurrentMsgGroup();
         if (groupID!=null) destination = groupID + "-" + destination;
-        Message message = new MsgTranslator().encode(request);
-        message.setSubject(destination);
-        try {
-            ((Connection)super.getMomClient().getConnection()).publish(message);
-        } catch (IOException e) {
-            e.printStackTrace();
+        request.put(MsgTranslator.MSG_NATS_SUBJECT, destination);
+        Message[] messages = new MsgTranslator().encode(request);
+        for (Message message : messages) {
+            try {
+                ((Connection) super.getMomClient().getConnection()).publish(message);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         return request;
     }
@@ -83,7 +85,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         if (destinationTrace.get(destination)) request.put(MomMsgTranslator.MSG_TRACE,true);
         else request.remove(MomMsgTranslator.MSG_TRACE);
 
-        Message message = new MsgTranslator().encode(request);
+        Message message = new MsgTranslator().encode(request)[0];
         message.setSubject(destination);
         if (answerSource !=null) message.setReplyTo(answerSource);
 
@@ -121,7 +123,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                     try {
                         msgResponse = subs.nextMessage(rpcTimeout, TimeUnit.NANOSECONDS);
                         if (msgResponse!=null) {
-                            String responseCorrID = (String) new MsgTranslator().decode(msgResponse).get(MsgTranslator.MSG_CORRELATION_ID);
+                            String responseCorrID = (String) new MsgTranslator().decode(new Message[]{msgResponse}).get(MsgTranslator.MSG_CORRELATION_ID);
                             if (responseCorrID != null && !responseCorrID.equals(corrId)) {
                                 log.warn("Response discarded ( " + responseCorrID + " ) ...");
                                 msgResponse = null;
@@ -145,8 +147,8 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                 log.debug("RPC time : " + rpcTime);
                 if (super.getMomClient().getRPCTimout()>0 && beginWaitingAnswer>0 && rpcTime > super.getMomClient().getRPCTimout()*1000000000*3/5) {
                     log.debug("Slow RPC time (" + rpcTime/1000000000 + ") on request to queue " + destination);
-                } else  destinationTrace.put(destination, false);
-                response = new MsgTranslator().decode(msgResponse);
+                } else destinationTrace.put(destination, false);
+                response = new MsgTranslator().decode(new Message[]{msgResponse});
             } else {
                 if (request.containsKey(MomMsgTranslator.MSG_RETRY_COUNT)) {
                     int retryCount = (int)request.get(MomMsgTranslator.MSG_RETRY_COUNT);

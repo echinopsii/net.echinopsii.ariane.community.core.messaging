@@ -50,40 +50,65 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
         super(mclient, worker, new MsgTranslator(), cache);
     }
 
+    HashMap<String, Integer> wipMsgCount = new HashMap<>();
+    HashMap<String, Message[]> wipMsg = new HashMap<>();
+
     @Override
     public void onReceive(Object message) throws Exception {
         if (message instanceof Message) {
             try {
-                Map<String, Object> finalMessage = ((MsgTranslator)super.getTranslator()).decode((Message) message);
-                if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) {
+                Map<String, Object> finalMessage = null;
+                Map<String, Object> tasteMessage = ((MsgTranslator)super.getTranslator()).decode(new Message[]{(Message) message});
+                if (((HashMap)tasteMessage).containsKey(MomMsgTranslator.MSG_TRACE)) {
                     if (super.getClient().isMsgDebugOnTimeout()) ((MomLogger)log).setMsgTraceLevel(true);
-                    else finalMessage.remove(MomMsgTranslator.MSG_TRACE);
+                    else tasteMessage.remove(MomMsgTranslator.MSG_TRACE);
                 }
 
-                ((MomLogger)log).traceMessage("MsgRequestActor.onReceive - in", finalMessage);
-                Map<String, Object> reply=null;
-                if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)!=null &&
-                        super.getReplyFromCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID))!=null)
-                    reply = super.getReplyFromCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID));
-                if (reply==null) reply = super.getMsgWorker().apply(finalMessage);
-                else log.debug("reply from cache !");
+                if (((HashMap)tasteMessage).containsKey(MomMsgTranslator.MSG_SPLIT_COUNT) &&
+                        (int)((HashMap)tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT) > 1) {
+                    String msgSplitID = (String) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_MID);
+                    Message[] wipMsgChunks;
+                    if (!wipMsg.containsKey(msgSplitID)) {
+                        wipMsgChunks = new Message[(int)((HashMap)tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT)];
+                        wipMsg.put(msgSplitID, wipMsgChunks);
+                        wipMsgCount.put(msgSplitID, 0);
+                    } else wipMsgChunks = wipMsg.get(msgSplitID);
+                    wipMsgChunks[(int)((HashMap)tasteMessage).get(MomMsgTranslator.MSG_SPLIT_OID)] = (Message) message;
+                    wipMsgCount.put(msgSplitID, wipMsgCount.get(msgSplitID) + 1);
+                    if (wipMsgCount.get(msgSplitID).equals((int) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT))) {
+                        finalMessage = ((MsgTranslator) super.getTranslator()).decode(wipMsgChunks);
+                        wipMsg.remove(msgSplitID);
+                        wipMsgCount.remove(msgSplitID);
+                    }
+                } else finalMessage = tasteMessage;
 
-                if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)!=null)
-                    super.putReplyToCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID),reply);
+                if (finalMessage!=null) {
+                    ((MomLogger) log).traceMessage("MsgRequestActor.onReceive - in", finalMessage);
+                    Map<String, Object> reply = null;
+                    if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID) != null &&
+                            super.getReplyFromCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)) != null)
+                        reply = super.getReplyFromCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID));
+                    if (reply == null) reply = super.getMsgWorker().apply(finalMessage);
+                    else log.debug("reply from cache !");
 
-                if (((Message)message).getReplyTo() != null && reply!=null) {
-                    if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)!=null) reply.put(
-                            MsgTranslator.MSG_CORRELATION_ID, finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)
-                    );
-                    if (super.getClient().getClientID()!=null)
-                        reply.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
-                    Message replyMessage = ((MsgTranslator) super.getTranslator()).encode(reply);
-                    replyMessage.setSubject(((Message)message).getReplyTo());
-                    ((Connection)super.getClient().getConnection()).publish(replyMessage);
+                    if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID) != null)
+                        super.putReplyToCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID), reply);
+
+                    if (((Message) message).getReplyTo() != null && reply != null) {
+                        if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID) != null) reply.put(
+                                MsgTranslator.MSG_CORRELATION_ID, finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)
+                        );
+                        if (super.getClient().getClientID() != null)
+                            reply.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
+                        Message replyMessage = ((MsgTranslator) super.getTranslator()).encode(reply)[0];
+                        replyMessage.setSubject(((Message) message).getReplyTo());
+                        ((Connection) super.getClient().getConnection()).publish(replyMessage);
+                    }
+
+                    ((MomLogger) log).traceMessage("MsgRequestActor.onReceive - out", finalMessage);
+                    if (((HashMap) finalMessage).containsKey(MomMsgTranslator.MSG_TRACE))
+                        ((MomLogger) log).setMsgTraceLevel(false);
                 }
-
-                ((MomLogger)log).traceMessage("MsgRequestActor.onReceive - out", finalMessage);
-                if (((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setMsgTraceLevel(false);
             } catch (Exception e) {
                 e.printStackTrace();
             }
