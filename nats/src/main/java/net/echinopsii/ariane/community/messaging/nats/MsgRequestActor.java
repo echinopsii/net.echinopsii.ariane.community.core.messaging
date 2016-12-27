@@ -103,9 +103,11 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                         );
                         if (super.getClient().getClientID() != null)
                             reply.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
-                        Message replyMessage = ((MsgTranslator) super.getTranslator()).encode(reply)[0];
-                        replyMessage.setSubject(((Message) message).getReplyTo());
-                        ((Connection) super.getClient().getConnection()).publish(replyMessage);
+                        Message[] replyMessage = ((MsgTranslator) super.getTranslator()).encode(reply);
+                        for (Message msg : replyMessage) {
+                            msg.setSubject(((Message) message).getReplyTo());
+                            ((Connection) super.getClient().getConnection()).publish(msg);
+                        }
                     }
 
                     ((MomLogger) log).traceMessage("MsgRequestActor.onReceive - out", finalMessage);

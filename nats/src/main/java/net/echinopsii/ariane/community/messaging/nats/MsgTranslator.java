@@ -214,6 +214,8 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
             wipMsgField.remove(MSG_NATS_SUBJECT);
             wipMsgField.remove(MSG_REPLY_TO);
             wipMsgField.remove(MSG_TRACE);
+            wipMsgField.remove(MSG_MESSAGE_ID);
+            wipMsgField.remove(MSG_CORRELATION_ID);
 
             int consumedBodyOffset = 0;
             byte[] wipBody = null;
@@ -232,6 +234,8 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
                 wipENATSMsg.getProperties().put(MSG_SPLIT_COUNT, Integer.MAX_VALUE); //TO BE REDEFINE
                 wipENATSMsg.getProperties().put(MSG_SPLIT_OID, splitOID);
                 if (message.get(MSG_TRACE)!=null) wipENATSMsg.getProperties().put(MSG_TRACE, message.get(MSG_TRACE));
+                if (message.get(MSG_MESSAGE_ID)!=null) wipENATSMsg.getProperties().put(MSG_MESSAGE_ID, message.get(MSG_APPLICATION_ID));
+                if (message.get(MSG_CORRELATION_ID)!=null) wipENATSMsg.getProperties().put(MSG_MESSAGE_ID, message.get(MSG_CORRELATION_ID));
 
                 // push properties first
                 for (String key: message.keySet()) {

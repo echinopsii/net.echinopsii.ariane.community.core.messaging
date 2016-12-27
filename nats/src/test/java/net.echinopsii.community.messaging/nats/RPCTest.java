@@ -141,7 +141,7 @@ public class RPCTest {
     }
 
     @Test
-    public void testHighPayloadRPC() throws InterruptedException, TimeoutException {
+    public void testHighPayloadRPC_1() throws InterruptedException, TimeoutException {
         if (client!=null) {
             for (int i=0; i < highPayloadBody.length; i+=4) {
                 byte[] intBytes = ByteBuffer.allocate(4).putInt(i).array();
@@ -151,7 +151,7 @@ public class RPCTest {
             TestRequestWorker requestWorker = new TestRequestWorker(client.getServiceFactory(), highPayloadBody, sendedReplyBody.getBytes());
             TestReplyWorker   replyWorker   = new TestReplyWorker(sendedReplyBody.getBytes());
 
-            client.getServiceFactory().requestService("RPC_SUBJECT_SPLIT", requestWorker);
+            client.getServiceFactory().requestService("RPC_SUBJECT_SPLIT_1", requestWorker);
 
             Map<String, Object> request = new HashMap<String, Object>();
             request.put("OP", "TEST");
@@ -159,7 +159,33 @@ public class RPCTest {
             request.put("ARGS_LONG", 0);
             request.put("ARGS_STRING", "toto");
             request.put(MomMsgTranslator.MSG_BODY, highPayloadBody);
-            client.createRequestExecutor().RPC(request, "RPC_SUBJECT_SPLIT", replyWorker);
+            client.createRequestExecutor().RPC(request, "RPC_SUBJECT_SPLIT_1", replyWorker);
+
+            assertTrue(requestWorker.isOK());
+            assertTrue(replyWorker.isOK());
+        }
+    }
+
+    @Test
+    public void testHighPayloadRPC_2() throws InterruptedException, TimeoutException {
+        if (client!=null) {
+            for (int i=0; i < highPayloadBody.length; i+=4) {
+                byte[] intBytes = ByteBuffer.allocate(4).putInt(i).array();
+                for (int j=0; j < 4; j++) highPayloadBody[i+j] = intBytes[j];
+            }
+
+            TestRequestWorker requestWorker = new TestRequestWorker(client.getServiceFactory(), highPayloadBody, highPayloadBody);
+            TestReplyWorker   replyWorker   = new TestReplyWorker(highPayloadBody);
+
+            client.getServiceFactory().requestService("RPC_SUBJECT_SPLIT_2", requestWorker);
+
+            Map<String, Object> request = new HashMap<String, Object>();
+            request.put("OP", "TEST");
+            request.put("ARGS_BOOL", true);
+            request.put("ARGS_LONG", 0);
+            request.put("ARGS_STRING", "toto");
+            request.put(MomMsgTranslator.MSG_BODY, highPayloadBody);
+            client.createRequestExecutor().RPC(request, "RPC_SUBJECT_SPLIT_2", replyWorker);
 
             assertTrue(requestWorker.isOK());
             assertTrue(replyWorker.isOK());

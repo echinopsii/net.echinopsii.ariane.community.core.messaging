@@ -140,63 +140,75 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         if (destinationTrace.get(destination)) request.put(MomMsgTranslator.MSG_TRACE, true);
         else request.remove(MomMsgTranslator.MSG_TRACE);
 
+        if (answerSource==null)
+            synchronized (UUID.class) {
+                answerSource = destination + "-" + UUID.randomUUID().toString() + "-RET";
+            }
+
         for (Message message : messages) {
             message.setSubject(destination);
-            if (answerSource != null) message.setReplyTo(answerSource);
+            message.setReplyTo(answerSource);
         }
 
         try {
-            Message msgResponse = null;
+            Message[] msgResponse = null;
+            Message wipMsgResponse = null;
             long beginWaitingAnswer = 0;
 
-            if (answerSource == null && messages.length==1) {
-                beginWaitingAnswer = System.nanoTime();
-                msgResponse = ((Connection) super.getMomClient().getConnection()).request(
-                        messages[0].getSubject(), messages[0].getData(), super.getMomClient().getRPCTimout(), TimeUnit.SECONDS
-                );
-            } else {
-                SyncSubscription subs;
-                if (groupID!=null) {
-                    if (sessionsRPCSubs.get(groupID) != null) {
-                        if (sessionsRPCSubs.get(groupID).get(answerSource) != null) subs = sessionsRPCSubs.get(groupID).get(answerSource);
-                        else {
-                            subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
-                            sessionsRPCSubs.get(groupID).put(answerSource, subs);
-                        }
-                    } else {
-                        HashMap<String, SyncSubscription> groupSubs = new HashMap<>();
+            SyncSubscription subs;
+            if (groupID!=null) {
+                if (sessionsRPCSubs.get(groupID) != null) {
+                    if (sessionsRPCSubs.get(groupID).get(answerSource) != null) subs = sessionsRPCSubs.get(groupID).get(answerSource);
+                    else {
                         subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
-                        groupSubs.put(answerSource, subs);
-                        sessionsRPCSubs.put(groupID, groupSubs);
+                        sessionsRPCSubs.get(groupID).put(answerSource, subs);
                     }
-                } else subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
-
-                if (destinationTrace.get(destination)) log.info("send request " + corrId);
-                for (Message message:messages)
-                    ((Connection) super.getMomClient().getConnection()).publish(message);
-                long rpcTimeout = super.getMomClient().getRPCTimout() * 1000000000;
-                beginWaitingAnswer = System.nanoTime();
-                while(msgResponse==null && rpcTimeout >= 0) {
-                    try {
-                        msgResponse = subs.nextMessage(rpcTimeout, TimeUnit.NANOSECONDS);
-                        if (msgResponse!=null) {
-                            String responseCorrID = (String) new MsgTranslator().decode(new Message[]{msgResponse}).get(MsgTranslator.MSG_CORRELATION_ID);
-                            if (responseCorrID != null && !responseCorrID.equals(corrId)) {
-                                log.warn("Response discarded ( " + responseCorrID + " ) ...");
-                                msgResponse = null;
-                            }
-                        }
-                    } catch (InterruptedException | TimeoutException ex) {
-                        log.debug("Thread interrupted while waiting for RPC answer...");
-                    } finally {
-                        if (super.getMomClient().getRPCTimout()>0)
-                            rpcTimeout = super.getMomClient().getRPCTimout()*1000000000 - (System.nanoTime()-beginWaitingAnswer);
-                        else rpcTimeout = 0;
-                        if (destinationTrace.get(destination)) log.info("rpcTimeout left: " + rpcTimeout);
-                    }
+                } else {
+                    HashMap<String, SyncSubscription> groupSubs = new HashMap<>();
+                    subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
+                    groupSubs.put(answerSource, subs);
+                    sessionsRPCSubs.put(groupID, groupSubs);
                 }
-                if (groupID==null) subs.close();
+            } else subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
+
+            if (destinationTrace.get(destination)) log.info("send request " + corrId);
+            for (Message message:messages)
+                ((Connection) super.getMomClient().getConnection()).publish(message);
+
+            long rpcTimeout = super.getMomClient().getRPCTimout() * 1000000000;
+            beginWaitingAnswer = System.nanoTime();
+            int responseSplitCount = 1;
+            int responseMsgCount = 0;
+            while(wipMsgResponse==null && responseMsgCount < responseSplitCount && rpcTimeout >= 0) {
+                try {
+                    wipMsgResponse = subs.nextMessage(rpcTimeout, TimeUnit.NANOSECONDS);
+                    if (wipMsgResponse!=null) {
+                        Map<String, Object> tmpDecodedMsg = new MsgTranslator().decode(new Message[]{wipMsgResponse});
+                        String responseCorrID = (String) tmpDecodedMsg.get(MsgTranslator.MSG_CORRELATION_ID);
+                        if (responseCorrID != null && !responseCorrID.equals(corrId)) {
+                            log.warn("Response discarded ( " + responseCorrID + " ) ...");
+                            wipMsgResponse = null;
+                        } else {
+                            if (msgResponse==null) {
+                                responseSplitCount = (int) ((tmpDecodedMsg.get(MsgTranslator.MSG_SPLIT_COUNT)!=null) ? tmpDecodedMsg.get(MsgTranslator.MSG_SPLIT_COUNT) : 1);
+                                msgResponse = new Message[responseSplitCount];
+                            }
+                            int splitOID = (int) ((tmpDecodedMsg.get(MsgTranslator.MSG_SPLIT_OID)!=null) ? tmpDecodedMsg.get(MsgTranslator.MSG_SPLIT_OID) : 0);
+                            msgResponse[splitOID] = wipMsgResponse;
+                            wipMsgResponse = null;
+                            responseMsgCount++;
+                        }
+                    }
+                } catch (InterruptedException | TimeoutException ex) {
+                    log.debug("Thread interrupted while waiting for RPC answer...");
+                } finally {
+                    if (super.getMomClient().getRPCTimout()>0)
+                        rpcTimeout = super.getMomClient().getRPCTimout()*1000000000 - (System.nanoTime()-beginWaitingAnswer);
+                    else rpcTimeout = 0;
+                    if (destinationTrace.get(destination)) log.info("rpcTimeout left: " + rpcTimeout);
+                }
             }
+            if (groupID==null) subs.close();
 
             if (msgResponse!=null) {
                 long endWaitingAnswer = System.nanoTime();
@@ -205,7 +217,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                 if (super.getMomClient().getRPCTimout()>0 && beginWaitingAnswer>0 && rpcTime > super.getMomClient().getRPCTimout()*1000000000*3/5) {
                     log.debug("Slow RPC time (" + rpcTime/1000000000 + ") on request to queue " + destination);
                 } else destinationTrace.put(destination, false);
-                response = new MsgTranslator().decode(new Message[]{msgResponse});
+                response = new MsgTranslator().decode(msgResponse);
             } else {
                 if (request.containsKey(MomMsgTranslator.MSG_RETRY_COUNT)) {
                     int retryCount = (int)request.get(MomMsgTranslator.MSG_RETRY_COUNT);
