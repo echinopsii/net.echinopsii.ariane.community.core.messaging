@@ -110,7 +110,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         String groupID = super.getMomClient().getCurrentMsgGroup();
         if (groupID!=null && !destination.contains(groupID)) {
             destination = groupID + "-" + destination;
-            if (answerSource ==null) answerSource = destination + "-RET";
+            if (answerSource == null) answerSource = destination + "-RET";
         }
 
         String corrId;
@@ -121,23 +121,38 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             request.put(MsgTranslator.MSG_CORRELATION_ID, corrId);
         } else corrId = (String) request.get(MsgTranslator.MSG_CORRELATION_ID);
 
+        request.put(MsgTranslator.MSG_NATS_SUBJECT, destination);
+        Message[] messages = new MsgTranslator().encode(request);
+        String splitMID = null;
+        if (groupID==null && messages.length>1) {
+            Map<String, Object> tasteMsg = new MsgTranslator().decode(new Message[]{messages[0]});
+            splitMID = (String) tasteMsg.get(MomMsgTranslator.MSG_SPLIT_MID);
+            try {
+                initMsgSplitGroup(destination, splitMID, destination + "_" + splitMID);
+                destination += "_" + splitMID;
+                if (answerSource == null) answerSource = destination + "-RET";
+            } catch (TimeoutException e) {
+                e.printStackTrace();
+            }
+        }
 
         if (destinationTrace.get(destination)==null) destinationTrace.put(destination, false);
-        if (destinationTrace.get(destination)) request.put(MomMsgTranslator.MSG_TRACE,true);
+        if (destinationTrace.get(destination)) request.put(MomMsgTranslator.MSG_TRACE, true);
         else request.remove(MomMsgTranslator.MSG_TRACE);
 
-        Message message = new MsgTranslator().encode(request)[0];
-        message.setSubject(destination);
-        if (answerSource !=null) message.setReplyTo(answerSource);
+        for (Message message : messages) {
+            message.setSubject(destination);
+            if (answerSource != null) message.setReplyTo(answerSource);
+        }
 
         try {
             Message msgResponse = null;
             long beginWaitingAnswer = 0;
 
-            if (answerSource ==null) {
+            if (answerSource == null && messages.length==1) {
                 beginWaitingAnswer = System.nanoTime();
                 msgResponse = ((Connection) super.getMomClient().getConnection()).request(
-                        message.getSubject(), message.getData(), super.getMomClient().getRPCTimout(), TimeUnit.SECONDS
+                        messages[0].getSubject(), messages[0].getData(), super.getMomClient().getRPCTimout(), TimeUnit.SECONDS
                 );
             } else {
                 SyncSubscription subs;
@@ -157,7 +172,8 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
                 } else subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
 
                 if (destinationTrace.get(destination)) log.info("send request " + corrId);
-                ((Connection) super.getMomClient().getConnection()).publish(message);
+                for (Message message:messages)
+                    ((Connection) super.getMomClient().getConnection()).publish(message);
                 long rpcTimeout = super.getMomClient().getRPCTimout() * 1000000000;
                 beginWaitingAnswer = System.nanoTime();
                 while(msgResponse==null && rpcTimeout >= 0) {
@@ -212,6 +228,15 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+
+        if (groupID==null && messages.length>1) {
+            destination = destination.split("_" + splitMID)[0];
+            try {
+                endMsgSplitGroup(destination, splitMID, destination + "_" + splitMID);
+            } catch (TimeoutException e) {
+                e.printStackTrace();
+            }
         }
 
         if (answerWorker !=null)
