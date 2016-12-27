@@ -25,6 +25,7 @@ import io.nats.client.Message;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomLogger;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
+import net.echinopsii.ariane.community.messaging.api.MomService;
 import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsRequestActor;
 import org.slf4j.Logger;

@@ -21,6 +21,8 @@ package net.echinopsii.community.messaging.nats;
 
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
+import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsAppMsgWorker;
 import net.echinopsii.ariane.community.messaging.common.MomClientFactory;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import org.junit.AfterClass;
@@ -63,20 +65,24 @@ public class FireAndForgetTest {
     final static String sendedMsgBody = "Hello NATS";
     final static byte[] highPayloadBody = new byte[2000000];
 
-    class TestMsgWorker implements AppMsgWorker {
+    class TestMsgWorker extends MomAkkaAbsAppMsgWorker {
         boolean OK = false;
         byte[] msgBody = null;
 
-        public TestMsgWorker(byte[] msgBody_) {
+        public TestMsgWorker(MomServiceFactory serviceFactory, byte[] msgBody_) {
+            super(serviceFactory);
             this.msgBody = msgBody_;
         }
 
         @Override
         public Map<String, Object> apply(Map<String, Object> message) {
-            byte[] recvMsgBody = (byte [])message.get(MomMsgTranslator.MSG_BODY);
-            if (Arrays.equals(recvMsgBody, this.msgBody))
-                OK = true;
-            return null;
+            Map<String, Object> ret = super.apply(message);
+            if (ret==null) {
+                byte[] recvMsgBody = (byte[]) message.get(MomMsgTranslator.MSG_BODY);
+                if (Arrays.equals(recvMsgBody, this.msgBody))
+                    OK = true;
+            }
+            return ret;
         }
 
         public boolean isOK() {
@@ -87,8 +93,7 @@ public class FireAndForgetTest {
     @Test
     public void testFireAndForget() throws InterruptedException {
         if (client!=null) {
-            TestMsgWorker test = new TestMsgWorker(sendedMsgBody.getBytes());
-
+            TestMsgWorker test = new TestMsgWorker(client.getServiceFactory(), sendedMsgBody.getBytes());
             client.getServiceFactory().requestService("FAF_SUBJECT", test);
 
             Map<String, Object> message = new HashMap<String, Object>();
@@ -96,7 +101,6 @@ public class FireAndForgetTest {
             client.createRequestExecutor().FAF(message, "FAF_SUBJECT");
 
             Thread.sleep(1000);
-
             assertTrue(test.isOK());
         }
     }
@@ -109,7 +113,7 @@ public class FireAndForgetTest {
                 for (int j=0; j < 4; j++) highPayloadBody[i+j] = intBytes[j];
             }
 
-            TestMsgWorker test = new TestMsgWorker(highPayloadBody);
+            TestMsgWorker test = new TestMsgWorker(client.getServiceFactory(), highPayloadBody);
             client.getServiceFactory().requestService("FAF_SUBJECT_SPLIT", test);
 
             Map<String, Object> message = new HashMap<>();

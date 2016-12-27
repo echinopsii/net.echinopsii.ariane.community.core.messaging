@@ -44,11 +44,11 @@ public interface MomMsgTranslator<M> {
     String MSG_BODY          = "MSG_BODY";
     String MSG_PROPERTIES    = "MSG_PROPERTIES";
     String MSG_RETRY_COUNT   = "MSG_RETRY_COUNT";
+    String MSG_TRACE         = "MSG_TRACE";
+
     String MSG_SPLIT_COUNT   = "MSG_SPLIT_COUNT";
     String MSG_SPLIT_MID     = "MSG_SPLIT_MID";
     String MSG_SPLIT_OID     = "MSG_SPLIT_OID";
-    String MSG_SPLITTED_KW   = "MSG_SPLITTED_";
-    String MSG_TRACE         = "MSG_TRACE";
 
     String MSG_RC            = "RC";
     String MSG_ERR           = "SERVER_ERROR_MESSAGE";
@@ -60,6 +60,11 @@ public interface MomMsgTranslator<M> {
 
     String OPERATION_FDN = "OPERATION";
     String OPERATION_NOT_DEFINED = "NOT_DEFINED";
+
+    String OP_MSG_SPLIT_FEED_INIT = "OP_SPLIT_FEED_INIT";
+    String OP_MSG_SPLIT_FEED_END  = "OP_SPLIT_FEED_END";
+    String PARAM_MSG_SPLIT_MID = "MSG_SPLIT_MID";
+    String PARAM_MSG_SPLIT_FEED_DEST = "MSG_SPLIT_FEED_DEST";
 
     /**
      *

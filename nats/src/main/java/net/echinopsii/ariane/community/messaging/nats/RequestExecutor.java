@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -46,19 +47,59 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         super(client);
     }
 
+    private void initMsgSplitGroup(String destination, String msgSplitMID, String msgSplitDest) throws TimeoutException {
+        Map<String, Object> request = new HashMap<>();
+        request.put(MomMsgTranslator.OPERATION_FDN, MomMsgTranslator.OP_MSG_SPLIT_FEED_INIT);
+        request.put(MomMsgTranslator.PARAM_MSG_SPLIT_MID, msgSplitMID);
+        request.put(MomMsgTranslator.PARAM_MSG_SPLIT_FEED_DEST, msgSplitDest);
+        this.RPC(request, destination, msgSplitDest + "_INIT_RET", null);
+    }
+
+    private void endMsgSplitGroup(String destination, String msgSplitMID, String msgSplitDest) throws TimeoutException {
+        Map<String, Object> request = new HashMap<>();
+        request.put(MomMsgTranslator.OPERATION_FDN, MomMsgTranslator.OP_MSG_SPLIT_FEED_INIT);
+        request.put(MomMsgTranslator.PARAM_MSG_SPLIT_MID, msgSplitMID);
+        this.RPC(request, destination, msgSplitDest + "_END_RET", null);
+    }
+
     @Override
     public Map<String, Object> FAF(Map<String, Object> request, String destination) {
-        String groupID = super.getMomClient().getCurrentMsgGroup();
-        if (groupID!=null) destination = groupID + "-" + destination;
         request.put(MsgTranslator.MSG_NATS_SUBJECT, destination);
         Message[] messages = new MsgTranslator().encode(request);
+
+        String groupID = super.getMomClient().getCurrentMsgGroup();
+        if (groupID!=null) destination = groupID + "-" + destination;
+
+        String splitMID = null;
+        if (groupID==null && messages.length>1) {
+            Map<String, Object> tasteMsg = new MsgTranslator().decode(new Message[]{messages[0]});
+            splitMID = (String) tasteMsg.get(MomMsgTranslator.MSG_SPLIT_MID);
+            try {
+                initMsgSplitGroup(destination, splitMID, destination + "_" + splitMID);
+                destination += "_" + splitMID;
+            } catch (TimeoutException e) {
+                e.printStackTrace();
+            }
+        }
+
         for (Message message : messages) {
             try {
+                message.setSubject(destination);
                 ((Connection) super.getMomClient().getConnection()).publish(message);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+
+        if (groupID==null && messages.length>1) {
+            destination = destination.split("_" + splitMID)[0];
+            try {
+                endMsgSplitGroup(destination, splitMID, destination + "_" + splitMID);
+            } catch (TimeoutException e) {
+                e.printStackTrace();
+            }
+        }
+
         return request;
     }
 

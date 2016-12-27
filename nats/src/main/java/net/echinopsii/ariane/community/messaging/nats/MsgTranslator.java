@@ -285,12 +285,12 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
             int splitCount = splittedENATSMsg.size();
             ret = new Message[splitCount];
             for (int i=0; i<splittedENATSMsg.size(); i++) {
+                ExtendedNATSMessage extendedNATSMessage = splittedENATSMsg.get(i);
+                extendedNATSMessage.getProperties().put(MSG_SPLIT_COUNT, splitCount);
+
                 Message splittedMessage = new Message();
                 if (message.get(MSG_NATS_SUBJECT)!=null) splittedMessage.setSubject((String) message.get(MSG_NATS_SUBJECT));
                 if (message.get(MSG_REPLY_TO)!=null) splittedMessage.setReplyTo((String) message.get(MSG_REPLY_TO));
-
-                ExtendedNATSMessage extendedNATSMessage = splittedENATSMsg.get(i);
-                extendedNATSMessage.getProperties().put(MSG_SPLIT_COUNT, splitCount);
 
                 byte[] data = extendedNATSMessage.toBSON();
                 splittedMessage.setData(data);
