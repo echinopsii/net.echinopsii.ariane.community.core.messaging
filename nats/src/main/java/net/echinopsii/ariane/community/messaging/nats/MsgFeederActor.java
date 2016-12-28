@@ -61,9 +61,11 @@ public class MsgFeederActor extends MsgAkkaAbsFeederActor {
             Map<String, Object> newFeed = super.getMsgFeeder().apply();
             if (super.getClient().getClientID()!=null)
                 newFeed.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
-            Message newFeedMsg = ((MsgTranslator)super.getTranslator()).encode(newFeed)[0];
-            newFeedMsg.setSubject(subject);
-            connection.publish(newFeedMsg);
+            Message[] newFeedMsgs = ((MsgTranslator)super.getTranslator()).encode(newFeed);
+            for (Message newFeedMsg : newFeedMsgs) {
+                newFeedMsg.setSubject(subject);
+                connection.publish(newFeedMsg);
+            }
         } else
             unhandled(message);
     }

@@ -20,12 +20,15 @@
 package net.echinopsii.community.messaging.nats;
 
 import net.echinopsii.ariane.community.messaging.api.*;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsAppMsgWorker;
 import net.echinopsii.ariane.community.messaging.common.MomClientFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -34,6 +37,7 @@ import static junit.framework.TestCase.assertTrue;
 
 public class TopicTest {
     private static MomClient client = null;
+    private static byte[] highPayloadBody = new byte[2000000];
 
     @BeforeClass
     public static void testSetup() throws IllegalAccessException, ClassNotFoundException, InstantiationException, IOException {
@@ -43,6 +47,10 @@ public class TopicTest {
 
         try {
             client.init(props);
+            for (int i=0; i < highPayloadBody.length; i+=4) {
+                byte[] intBytes = ByteBuffer.allocate(4).putInt(i).array();
+                for (int j=0; j < 4; j++) highPayloadBody[i+j] = intBytes[j];
+            }
         } catch (Exception e) {
             System.err.println("No local NATS to test");
             client = null;
@@ -85,13 +93,53 @@ public class TopicTest {
         }
     }
 
-    class TestSubscriber implements AppMsgWorker {
+    class TestHPFeeder implements AppMsgFeeder {
 
+        private int interval = 100;
+        private String stockName;
         private int msgNumber = 0;
+
+        public TestHPFeeder(String sname) {
+            stockName = sname;
+        }
+
+        @Override
+        public Map<String, Object> apply() {
+            Map<String, Object> ret = new HashMap<String, Object>();
+            ret.put("NAME", stockName);
+            int price = (int)(Math.random() * 10 + Math.random() * 100 + Math.random() * 1000);
+            ret.put("PRICE", price );
+            ret.put(MomMsgTranslator.MSG_BODY, highPayloadBody);
+            msgNumber++;
+            return ret;
+        }
+
+        @Override
+        public int getInterval() {
+            return interval;
+        }
+
+        public int getMsgNumber() {
+            return msgNumber;
+        }
+    }
+
+    class TestSubscriber extends MomAkkaAbsAppMsgWorker {
+
+        private byte[] awaitedBody = null;
+        private int msgNumber = 0;
+
+        public TestSubscriber(MomServiceFactory serviceFactory, byte[] awaitedBody) {
+            super(serviceFactory);
+            this.awaitedBody = awaitedBody;
+        }
 
         @Override
         public Map<String, Object> apply(Map<String, Object> message) {
-            msgNumber++;
+            if (message!=null)
+                if (this.awaitedBody==null || Arrays.equals(this.awaitedBody, (byte [])message.get(MomMsgTranslator.MSG_BODY)))
+                    msgNumber++;
+                else System.out.println("Problem with awaited body!");
             return message;
         }
 
@@ -107,10 +155,10 @@ public class TopicTest {
             TestFeeder feederStockB = new TestFeeder("STOCKB");
             TestFeeder feederStockC = new TestFeeder("STOCKC");
 
-            TestSubscriber subsAll    = new TestSubscriber();
-            TestSubscriber subsStockA = new TestSubscriber();
-            TestSubscriber subsStockB = new TestSubscriber();
-            TestSubscriber subsStockC = new TestSubscriber();
+            TestSubscriber subsAll    = new TestSubscriber(client.getServiceFactory(), null);
+            TestSubscriber subsStockA = new TestSubscriber(client.getServiceFactory(), null);
+            TestSubscriber subsStockB = new TestSubscriber(client.getServiceFactory(), null);
+            TestSubscriber subsStockC = new TestSubscriber(client.getServiceFactory(), null);
 
             MomService subsService  = client.getServiceFactory().subscriberService("PRICE", null, subsAll);
             MomService subsServiceA = client.getServiceFactory().subscriberService("PRICE", "STOCKA", subsStockA);
@@ -124,7 +172,58 @@ public class TopicTest {
             while(feederStockA.getMsgNumber()<=10)
                 Thread.sleep(feederStockA.getInterval());
 
-            //assertTrue(subsAll.getMsgNumber()==(feederStockA.getMsgNumber()+feederStockB.getMsgNumber()+feederStockC.getMsgNumber()));
+            feedServiceA.stop();
+            feedServiceB.stop();
+            feedServiceC.stop();
+
+            Thread.sleep(feederStockA.getInterval());
+
+            subsService.stop();
+            subsServiceA.stop();
+            subsServiceB.stop();
+            subsServiceC.stop();
+
+            assertTrue(subsAll.getMsgNumber() == (feederStockA.getMsgNumber() + feederStockB.getMsgNumber() + feederStockC.getMsgNumber()));
+            assertTrue(subsStockA.getMsgNumber() == feederStockA.getMsgNumber());
+            assertTrue(subsStockB.getMsgNumber()==feederStockB.getMsgNumber());
+            assertTrue(subsStockC.getMsgNumber()==feederStockC.getMsgNumber());
+
+        }
+    }
+
+
+    @Test
+    public void testHPPubSubTopic() throws InterruptedException {
+        if (client!=null) {
+            TestHPFeeder feederStockA = new TestHPFeeder("HPSTOCKA");
+            TestHPFeeder feederStockB = new TestHPFeeder("HPSTOCKB");
+            TestHPFeeder feederStockC = new TestHPFeeder("HPSTOCKC");
+
+            TestSubscriber subsStockA = new TestSubscriber(client.getServiceFactory(), highPayloadBody);
+            TestSubscriber subsStockB = new TestSubscriber(client.getServiceFactory(), highPayloadBody);
+            TestSubscriber subsStockC = new TestSubscriber(client.getServiceFactory(), highPayloadBody);
+
+            MomService subsServiceA = client.getServiceFactory().subscriberService("PRICE", "STOCKA", subsStockA);
+            MomService subsServiceB = client.getServiceFactory().subscriberService("PRICE", "STOCKB", subsStockB);
+            MomService subsServiceC = client.getServiceFactory().subscriberService("PRICE", "STOCKC", subsStockC);
+
+            MomService feedServiceA = client.getServiceFactory().feederService("PRICE", "STOCKA", feederStockA.getInterval(), feederStockA);
+            MomService feedServiceB = client.getServiceFactory().feederService("PRICE", "STOCKB", feederStockB.getInterval(), feederStockB);
+            MomService feedServiceC = client.getServiceFactory().feederService("PRICE", "STOCKC", feederStockC.getInterval(), feederStockC);
+
+            while(feederStockA.getMsgNumber()<=10)
+                Thread.sleep(feederStockA.getInterval());
+
+            feedServiceA.stop();
+            feedServiceB.stop();
+            feedServiceC.stop();
+
+            Thread.sleep(feederStockA.getInterval()*5);
+
+            subsServiceA.stop();
+            subsServiceB.stop();
+            subsServiceC.stop();
+
             assertTrue(subsStockA.getMsgNumber()==feederStockA.getMsgNumber());
             assertTrue(subsStockB.getMsgNumber()==feederStockB.getMsgNumber());
             assertTrue(subsStockC.getMsgNumber()==feederStockC.getMsgNumber());
