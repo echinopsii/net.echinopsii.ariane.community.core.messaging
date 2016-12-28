@@ -65,6 +65,7 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                     else tasteMessage.remove(MomMsgTranslator.MSG_TRACE);
                 }
 
+                boolean errorOnSplit = false;
                 if (((HashMap)tasteMessage).containsKey(MomMsgTranslator.MSG_SPLIT_COUNT) &&
                         (int)((HashMap)tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT) > 1) {
                     if (super.getMsgWorker() instanceof MomAkkaAbsAppMsgWorker) {
@@ -86,39 +87,52 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                             ((MomAkkaAbsAppMsgWorker)super.getMsgWorker()).wipMsgCount.remove(msgSplitID);
                         }
                     } else {
-                        log.error("High payload splitted messages are not supported by underlying message worker");
-                        finalMessage = tasteMessage; 
+                        log.error("High payload splitted messages are not supported by underlying message worker...");
+                        log.error(super.getMsgWorker().getClass().getName() + " should extends MomAkkaAbsAppMsgWorker !");
+                        finalMessage = tasteMessage;
+                        errorOnSplit = true;
                     }
                 } else finalMessage = tasteMessage;
 
                 if (finalMessage!=null) {
                     ((MomLogger) log).traceMessage("MsgRequestActor.onReceive - in", finalMessage);
-                    Map<String, Object> reply = null;
-                    if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID) != null &&
-                            super.getReplyFromCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)) != null)
-                        reply = super.getReplyFromCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID));
-                    if (reply == null) reply = super.getMsgWorker().apply(finalMessage);
-                    else log.debug("reply from cache !");
+                    if (!errorOnSplit) {
+                        Map<String, Object> reply = null;
+                        if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID) != null &&
+                                super.getReplyFromCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)) != null)
+                            reply = super.getReplyFromCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID));
+                        if (reply == null) reply = super.getMsgWorker().apply(finalMessage);
+                        else log.debug("reply from cache !");
 
-                    if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID) != null)
-                        super.putReplyToCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID), reply);
+                        if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID) != null)
+                            super.putReplyToCache((String) finalMessage.get(MsgTranslator.MSG_CORRELATION_ID), reply);
 
-                    if (((Message) message).getReplyTo() != null && reply != null) {
-                        if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID) != null) reply.put(
-                                MsgTranslator.MSG_CORRELATION_ID, finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)
-                        );
-                        if (super.getClient().getClientID() != null)
-                            reply.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
+                        if (((Message) message).getReplyTo() != null && reply != null) {
+                            if (finalMessage.get(MsgTranslator.MSG_CORRELATION_ID) != null) reply.put(
+                                    MsgTranslator.MSG_CORRELATION_ID, finalMessage.get(MsgTranslator.MSG_CORRELATION_ID)
+                            );
+                            if (super.getClient().getClientID() != null)
+                                reply.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
+                            Message[] replyMessage = ((MsgTranslator) super.getTranslator()).encode(reply);
+                            for (Message msg : replyMessage) {
+                                msg.setSubject(((Message) message).getReplyTo());
+                                ((Connection) super.getClient().getConnection()).publish(msg);
+                            }
+                        }
+
+                        ((MomLogger) log).traceMessage("MsgRequestActor.onReceive - out", finalMessage);
+                        if (((HashMap) finalMessage).containsKey(MomMsgTranslator.MSG_TRACE))
+                            ((MomLogger) log).setMsgTraceLevel(false);
+                    } else if (((Message) message).getReplyTo() != null) {
+                        Map<String, Object> reply = new HashMap<>();
+                        reply.put(MomMsgTranslator.MSG_RC, MomMsgTranslator.MSG_RET_SERVER_ERR);
+                        reply.put(MomMsgTranslator.MSG_ERR, "High payload splitted messages are not supported by underlying message worker");
                         Message[] replyMessage = ((MsgTranslator) super.getTranslator()).encode(reply);
                         for (Message msg : replyMessage) {
                             msg.setSubject(((Message) message).getReplyTo());
                             ((Connection) super.getClient().getConnection()).publish(msg);
                         }
                     }
-
-                    ((MomLogger) log).traceMessage("MsgRequestActor.onReceive - out", finalMessage);
-                    if (((HashMap) finalMessage).containsKey(MomMsgTranslator.MSG_TRACE))
-                        ((MomLogger) log).setMsgTraceLevel(false);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
