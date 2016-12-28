@@ -65,7 +65,6 @@ public class RPCTest {
 
     final static String sendedRequestBody = "Hello NATS!";
     final static String sendedReplyBody   = "Hello Client!";
-
     final static byte[] highPayloadBody = new byte[2000000];
 
     class TestRequestWorker extends MomAkkaAbsAppMsgWorker {
@@ -186,6 +185,32 @@ public class RPCTest {
             request.put("ARGS_STRING", "toto");
             request.put(MomMsgTranslator.MSG_BODY, highPayloadBody);
             client.createRequestExecutor().RPC(request, "RPC_SUBJECT_SPLIT_2", replyWorker);
+
+            assertTrue(requestWorker.isOK());
+            assertTrue(replyWorker.isOK());
+        }
+    }
+
+    @Test
+    public void testHighPayloadRPC_3() throws InterruptedException, TimeoutException {
+        if (client!=null) {
+            for (int i=0; i < highPayloadBody.length; i+=4) {
+                byte[] intBytes = ByteBuffer.allocate(4).putInt(i).array();
+                for (int j=0; j < 4; j++) highPayloadBody[i+j] = intBytes[j];
+            }
+
+            TestRequestWorker requestWorker = new TestRequestWorker(client.getServiceFactory(), sendedRequestBody.getBytes(), highPayloadBody);
+            TestReplyWorker   replyWorker   = new TestReplyWorker(highPayloadBody);
+
+            client.getServiceFactory().requestService("RPC_SUBJECT_SPLIT_3", requestWorker);
+
+            Map<String, Object> request = new HashMap<String, Object>();
+            request.put("OP", "TEST");
+            request.put("ARGS_BOOL", true);
+            request.put("ARGS_LONG", 0);
+            request.put("ARGS_STRING", "toto");
+            request.put(MomMsgTranslator.MSG_BODY, sendedRequestBody);
+            client.createRequestExecutor().RPC(request, "RPC_SUBJECT_SPLIT_3", replyWorker);
 
             assertTrue(requestWorker.isOK());
             assertTrue(replyWorker.isOK());
