@@ -26,6 +26,7 @@ import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomLogger;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import net.echinopsii.ariane.community.messaging.api.MomService;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsAppMsgWorker;
 import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsRequestActor;
 import org.slf4j.Logger;
@@ -35,8 +36,8 @@ import java.util.Map;
 
 public class MsgRequestActor extends MsgAkkaAbsRequestActor {
     private static final Logger log = MomLoggerFactory.getLogger(MsgRequestActor.class);
-    private static HashMap<String, Integer> wipMsgCount = new HashMap<>();
-    private static HashMap<String, Message[]> wipMsg = new HashMap<>();
+    //private static HashMap<String, Integer> wipMsgCount = new HashMap<>();
+    //private static HashMap<String, Message[]> wipMsg = new HashMap<>();
 
     public static Props props(final Client mclient, final AppMsgWorker worker, final boolean cache) {
         return Props.create(new Creator<MsgRequestActor>() {
@@ -66,22 +67,27 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
 
                 if (((HashMap)tasteMessage).containsKey(MomMsgTranslator.MSG_SPLIT_COUNT) &&
                         (int)((HashMap)tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT) > 1) {
-                    String msgSplitID = (String) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_MID);
-                    Message[] wipMsgChunks;
-                    if (!wipMsg.containsKey(msgSplitID)) {
-                        wipMsgChunks = new Message[(int)((HashMap)tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT)];
-                        wipMsg.put(msgSplitID, wipMsgChunks);
-                        wipMsgCount.put(msgSplitID, 0);
-                    } else wipMsgChunks = wipMsg.get(msgSplitID);
+                    if (super.getMsgWorker() instanceof MomAkkaAbsAppMsgWorker) {
+                        String msgSplitID = (String) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_MID);
+                        Message[] wipMsgChunks;
+                        if (!((MomAkkaAbsAppMsgWorker)super.getMsgWorker()).wipMsg.containsKey(msgSplitID)) {
+                            wipMsgChunks = new Message[(int) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT)];
+                            ((MomAkkaAbsAppMsgWorker)super.getMsgWorker()).wipMsg.put(msgSplitID, wipMsgChunks);
+                            ((MomAkkaAbsAppMsgWorker)super.getMsgWorker()).wipMsgCount.put(msgSplitID, 0);
+                        } else wipMsgChunks = (Message[]) ((MomAkkaAbsAppMsgWorker)super.getMsgWorker()).wipMsg.get(msgSplitID);
 
-                    wipMsgChunks[(int)((HashMap)tasteMessage).get(MomMsgTranslator.MSG_SPLIT_OID)] = (Message) message;
-                    int count = wipMsgCount.get(msgSplitID) + 1;
-                    wipMsgCount.put(msgSplitID, count);
+                        wipMsgChunks[(int) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_OID)] = (Message) message;
+                        int count = ((MomAkkaAbsAppMsgWorker)super.getMsgWorker()).wipMsgCount.get(msgSplitID) + 1;
+                        ((MomAkkaAbsAppMsgWorker)super.getMsgWorker()).wipMsgCount.put(msgSplitID, count);
 
-                    if (wipMsgCount.get(msgSplitID).equals((int) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT))) {
-                        finalMessage = ((MsgTranslator) super.getTranslator()).decode(wipMsgChunks);
-                        wipMsg.remove(msgSplitID);
-                        wipMsgCount.remove(msgSplitID);
+                        if (((MomAkkaAbsAppMsgWorker)super.getMsgWorker()).wipMsgCount.get(msgSplitID).equals((int) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT))) {
+                            finalMessage = ((MsgTranslator) super.getTranslator()).decode(wipMsgChunks);
+                            ((MomAkkaAbsAppMsgWorker)super.getMsgWorker()).wipMsg.remove(msgSplitID);
+                            ((MomAkkaAbsAppMsgWorker)super.getMsgWorker()).wipMsgCount.remove(msgSplitID);
+                        }
+                    } else {
+                        log.error("High payload splitted messages are not supported by underlying message worker");
+                        finalMessage = tasteMessage; 
                     }
                 } else finalMessage = tasteMessage;
 

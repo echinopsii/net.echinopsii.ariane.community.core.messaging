@@ -13,6 +13,9 @@ public abstract class MomAkkaAbsAppMsgWorker implements AppMsgWorker {
     private static HashMap<String, MomService> splitMsgGroupServices = new HashMap<>();
     private MomServiceFactory serviceFactory = null;
 
+    public HashMap<String, Integer> wipMsgCount = new HashMap<>();
+    public HashMap<String, Object[]> wipMsg = new HashMap<>();
+
     public MomAkkaAbsAppMsgWorker(MomServiceFactory serviceFactory_) {
         this.serviceFactory = serviceFactory_;
     }
@@ -62,4 +65,6 @@ public abstract class MomAkkaAbsAppMsgWorker implements AppMsgWorker {
         }
         return (reply.size()>0) ? reply : null;
     }
+
+
 }
