@@ -242,7 +242,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
         final Connection connection = ((Client)super.getMomClient()).getConnection();
 
         if (connection != null && !connection.isClosed()) {
-            final String subject = source + ((selector !=null && !selector.equals("")) ? "." + selector : "");
+            final String subject = source + ((selector !=null && !selector.equals("")) ? "." + selector : ".*");
             subsActor = ((Client)super.getMomClient()).getActorSystem().actorOf(
                     MsgSubsActor.props(feedWorker), subject + "_msgWorker"
             );
