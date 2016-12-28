@@ -22,16 +22,16 @@ package net.echinopsii.community.messaging.nats;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
+import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsAppMsgWorker;
 import net.echinopsii.ariane.community.messaging.common.MomClientFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
+import java.nio.ByteBuffer;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 import static junit.framework.TestCase.assertTrue;
@@ -55,11 +55,7 @@ public class MsgGroupRPCTest {
             client.init(props);
             sessionRequestWorker = new TestSessionRequestWorker(client);
             sessionServiceWorker = new TestSessionServiceWorker(client);
-            requestWorker = new TestRequestWorker();
-            replyWorker   = new TestReplyWorker();
-
             client.getServiceFactory().requestService("SESSION_SUBJECT", sessionServiceWorker);
-            client.getServiceFactory().msgGroupRequestService("RPC_SUBJECT", requestWorker);
         } catch (Exception e) {
             System.err.println("No local NATS to test");
             client = null;
@@ -74,6 +70,7 @@ public class MsgGroupRPCTest {
 
     final static String sendedRequestBody = "Hello NATS!";
     final static String sendedReplyBody   = "Hello Client!";
+    final static byte[] highPayloadBody = new byte[2000000];
 
     static class TestSessionServiceWorker implements AppMsgWorker {
         MomClient client ;
@@ -110,18 +107,28 @@ public class MsgGroupRPCTest {
         }
     }
 
-    static class TestRequestWorker implements AppMsgWorker {
+    static class TestRequestWorker extends MomAkkaAbsAppMsgWorker {
         boolean OK = false;
+        byte[] msgRequestBody = null;
+        byte[] msgReplyBody = null;
+
+        public TestRequestWorker(MomServiceFactory serviceFactory, byte[] msgRequestBody_, byte[] msgReplyBody_) {
+            super(serviceFactory);
+            this.msgRequestBody = msgRequestBody_;
+            this.msgReplyBody = msgReplyBody_;
+        }
 
         @Override
         public Map<String, Object> apply(Map<String, Object> message) {
-            String recvMsgBody = new String((byte [])message.get(MomMsgTranslator.MSG_BODY));
-            if (recvMsgBody.equals(sendedRequestBody))
-                OK = !OK;
+            Map<String, Object> reply = super.apply(message);
+            if (reply==null) {
+                byte[] recvMsgBody = (byte[]) message.get(MomMsgTranslator.MSG_BODY);
+                if (Arrays.equals(recvMsgBody, this.msgRequestBody))
+                    OK = !OK;
 
-            Map<String, Object> reply = new HashMap<String, Object>();
-            reply.put(MomMsgTranslator.MSG_BODY, sendedReplyBody);
-
+                reply = new HashMap();
+                reply.put(MomMsgTranslator.MSG_BODY, this.msgReplyBody);
+            }
             return reply;
         }
 
@@ -132,11 +139,16 @@ public class MsgGroupRPCTest {
 
     static class TestReplyWorker implements AppMsgWorker {
         boolean OK = false;
+        byte[] msgBody = null;
+
+        public TestReplyWorker(byte[] msgBody_) {
+            this.msgBody = msgBody_;
+        }
 
         @Override
         public Map<String, Object> apply(Map<String, Object> message) {
-            String recvMsgBody = new String((byte [])message.get(MomMsgTranslator.MSG_BODY));
-            if (recvMsgBody.equals(sendedReplyBody))
+            byte[] recvMsgBody = (byte [])message.get(MomMsgTranslator.MSG_BODY);
+            if (Arrays.equals(recvMsgBody, this.msgBody))
                 OK = !OK;
             return message;
         }
@@ -165,6 +177,11 @@ public class MsgGroupRPCTest {
     @Test
     public void testGroupRPC() throws InterruptedException, TimeoutException {
         if (client!=null) {
+            requestWorker = new TestRequestWorker(client.getServiceFactory(), sendedRequestBody.getBytes(), sendedReplyBody.getBytes());
+            replyWorker   = new TestReplyWorker(sendedReplyBody.getBytes());
+
+            client.getServiceFactory().msgGroupRequestService("RPC_SUBJECT", requestWorker);
+
             openSession();
 
             Map<String, Object> request = new HashMap<String, Object>();
@@ -193,4 +210,126 @@ public class MsgGroupRPCTest {
        }
     }
 
+    @Test
+    public void testGroupHPRPC_1() throws InterruptedException, TimeoutException {
+        if (client!=null) {
+            for (int i=0; i < highPayloadBody.length; i+=4) {
+                byte[] intBytes = ByteBuffer.allocate(4).putInt(i).array();
+                for (int j=0; j < 4; j++) highPayloadBody[i+j] = intBytes[j];
+            }
+
+            requestWorker = new TestRequestWorker(client.getServiceFactory(), highPayloadBody, sendedReplyBody.getBytes());
+            replyWorker   = new TestReplyWorker(sendedReplyBody.getBytes());
+
+            client.getServiceFactory().msgGroupRequestService("RPC_SUBJECT_SPLIT_1", requestWorker);
+
+            openSession();
+
+            Map<String, Object> request = new HashMap<String, Object>();
+            request.put("OP", "TEST");
+            request.put("ARGS_BOOL", true);
+            request.put("ARGS_LONG", 0);
+            request.put("ARGS_STRING", "toto");
+            request.put(MomMsgTranslator.MSG_BODY, highPayloadBody);
+            client.createRequestExecutor().RPC(request, "RPC_SUBJECT_SPLIT_1", replyWorker);
+
+            assertTrue(requestWorker.isOK());
+            assertTrue(replyWorker.isOK());
+
+            closeSession();
+
+            request.clear();
+            request.put("OP", "TEST");
+            request.put("ARGS_BOOL", true);
+            request.put("ARGS_LONG", 0);
+            request.put("ARGS_STRING", "toto");
+            request.put(MomMsgTranslator.MSG_BODY, highPayloadBody);
+            client.createRequestExecutor().RPC(request, "RPC_SUBJECT_SPLIT_1", replyWorker);
+
+            assertTrue(!requestWorker.isOK());
+            assertTrue(!replyWorker.isOK());
+        }
+    }
+
+    @Test
+    public void testGroupHPRPC_2() throws InterruptedException, TimeoutException {
+        if (client!=null) {
+            for (int i=0; i < highPayloadBody.length; i+=4) {
+                byte[] intBytes = ByteBuffer.allocate(4).putInt(i).array();
+                for (int j=0; j < 4; j++) highPayloadBody[i+j] = intBytes[j];
+            }
+
+            requestWorker = new TestRequestWorker(client.getServiceFactory(), highPayloadBody, highPayloadBody);
+            replyWorker   = new TestReplyWorker(highPayloadBody);
+
+            client.getServiceFactory().msgGroupRequestService("RPC_SUBJECT_SPLIT_2", requestWorker);
+
+            openSession();
+
+            Map<String, Object> request = new HashMap<String, Object>();
+            request.put("OP", "TEST");
+            request.put("ARGS_BOOL", true);
+            request.put("ARGS_LONG", 0);
+            request.put("ARGS_STRING", "toto");
+            request.put(MomMsgTranslator.MSG_BODY, highPayloadBody);
+            client.createRequestExecutor().RPC(request, "RPC_SUBJECT_SPLIT_2", replyWorker);
+
+            assertTrue(requestWorker.isOK());
+            assertTrue(replyWorker.isOK());
+
+            closeSession();
+
+            request.clear();
+            request.put("OP", "TEST");
+            request.put("ARGS_BOOL", true);
+            request.put("ARGS_LONG", 0);
+            request.put("ARGS_STRING", "toto");
+            request.put(MomMsgTranslator.MSG_BODY, highPayloadBody);
+            client.createRequestExecutor().RPC(request, "RPC_SUBJECT_SPLIT_2", replyWorker);
+
+            assertTrue(!requestWorker.isOK());
+            assertTrue(!replyWorker.isOK());
+        }
+    }
+
+    @Test
+    public void testGroupHPRPC_3() throws InterruptedException, TimeoutException {
+        if (client!=null) {
+            for (int i=0; i < highPayloadBody.length; i+=4) {
+                byte[] intBytes = ByteBuffer.allocate(4).putInt(i).array();
+                for (int j=0; j < 4; j++) highPayloadBody[i+j] = intBytes[j];
+            }
+
+            requestWorker = new TestRequestWorker(client.getServiceFactory(), sendedRequestBody.getBytes(), highPayloadBody);
+            replyWorker   = new TestReplyWorker(highPayloadBody);
+
+            client.getServiceFactory().msgGroupRequestService("RPC_SUBJECT_SPLIT_3", requestWorker);
+
+            openSession();
+
+            Map<String, Object> request = new HashMap<String, Object>();
+            request.put("OP", "TEST");
+            request.put("ARGS_BOOL", true);
+            request.put("ARGS_LONG", 0);
+            request.put("ARGS_STRING", "toto");
+            request.put(MomMsgTranslator.MSG_BODY, sendedRequestBody);
+            client.createRequestExecutor().RPC(request, "RPC_SUBJECT_SPLIT_3", replyWorker);
+
+            assertTrue(requestWorker.isOK());
+            assertTrue(replyWorker.isOK());
+
+            closeSession();
+
+            request.clear();
+            request.put("OP", "TEST");
+            request.put("ARGS_BOOL", true);
+            request.put("ARGS_LONG", 0);
+            request.put("ARGS_STRING", "toto");
+            request.put(MomMsgTranslator.MSG_BODY, sendedRequestBody);
+            client.createRequestExecutor().RPC(request, "RPC_SUBJECT_SPLIT_3", replyWorker);
+
+            assertTrue(!requestWorker.isOK());
+            assertTrue(!replyWorker.isOK());
+        }
+    }
 }
