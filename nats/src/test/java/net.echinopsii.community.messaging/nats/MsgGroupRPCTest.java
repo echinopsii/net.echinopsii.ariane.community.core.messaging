@@ -23,7 +23,7 @@ import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
-import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsAppMsgWorker;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsAppHPMsgSrvWorker;
 import net.echinopsii.ariane.community.messaging.common.MomClientFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -107,7 +107,7 @@ public class MsgGroupRPCTest {
         }
     }
 
-    static class TestRequestWorker extends MomAkkaAbsAppMsgWorker {
+    static class TestRequestWorker extends MomAkkaAbsAppHPMsgSrvWorker {
         boolean OK = false;
         byte[] msgRequestBody = null;
         byte[] msgReplyBody = null;

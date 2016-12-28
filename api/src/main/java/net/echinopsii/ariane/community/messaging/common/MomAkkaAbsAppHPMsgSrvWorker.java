@@ -1,3 +1,21 @@
+/**
+ * Messaging - Common Implementation
+ * Application High Payload Message Service Worker abstract implementation
+ * Copyright (C) 12/27/16 echinopsii
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package net.echinopsii.ariane.community.messaging.common;
 
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
@@ -8,7 +26,12 @@ import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class MomAkkaAbsAppMsgWorker implements AppMsgWorker {
+/**
+ * MomAkkaAbsAppHPMsgSrvWorker provides an abstract implementation of AppMsgWorker interface based on actors model and Akka
+ * for services needing to manage high payload messages which could be splitted in severals messages depending the message
+ * max payload size of your message broker.
+ */
+public abstract class MomAkkaAbsAppHPMsgSrvWorker implements AppMsgWorker {
 
     private static HashMap<String, MomService> splitMsgGroupServices = new HashMap<>();
     private MomServiceFactory serviceFactory = null;
@@ -16,7 +39,7 @@ public abstract class MomAkkaAbsAppMsgWorker implements AppMsgWorker {
     public HashMap<String, Integer> wipMsgCount = new HashMap<>();
     public HashMap<String, Object[]> wipMsg = new HashMap<>();
 
-    public MomAkkaAbsAppMsgWorker(MomServiceFactory serviceFactory_) {
+    public MomAkkaAbsAppHPMsgSrvWorker(MomServiceFactory serviceFactory_) {
         this.serviceFactory = serviceFactory_;
     }
 

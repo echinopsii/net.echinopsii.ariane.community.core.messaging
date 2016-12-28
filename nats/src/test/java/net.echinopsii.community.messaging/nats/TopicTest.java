@@ -20,7 +20,7 @@
 package net.echinopsii.community.messaging.nats;
 
 import net.echinopsii.ariane.community.messaging.api.*;
-import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsAppMsgWorker;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsAppHPMsgSrvWorker;
 import net.echinopsii.ariane.community.messaging.common.MomClientFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -124,7 +124,7 @@ public class TopicTest {
         }
     }
 
-    class TestSubscriber extends MomAkkaAbsAppMsgWorker {
+    class TestSubscriber extends MomAkkaAbsAppHPMsgSrvWorker {
 
         private byte[] awaitedBody = null;
         private int msgNumber = 0;
@@ -218,15 +218,15 @@ public class TopicTest {
             feedServiceB.stop();
             feedServiceC.stop();
 
-            Thread.sleep(feederStockA.getInterval()*5);
+            Thread.sleep(feederStockA.getInterval() * 5);
 
             subsServiceA.stop();
             subsServiceB.stop();
             subsServiceC.stop();
 
-            assertTrue(subsStockA.getMsgNumber()==feederStockA.getMsgNumber());
-            assertTrue(subsStockB.getMsgNumber()==feederStockB.getMsgNumber());
-            assertTrue(subsStockC.getMsgNumber()==feederStockC.getMsgNumber());
+            assertTrue(subsStockA.getMsgNumber() == feederStockA.getMsgNumber());
+            assertTrue(subsStockB.getMsgNumber() == feederStockB.getMsgNumber());
+            assertTrue(subsStockC.getMsgNumber() == feederStockC.getMsgNumber());
         }
     }
 }

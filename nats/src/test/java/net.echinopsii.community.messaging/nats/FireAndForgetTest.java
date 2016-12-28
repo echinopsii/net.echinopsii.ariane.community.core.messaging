@@ -19,10 +19,9 @@
 
 package net.echinopsii.community.messaging.nats;
 
-import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
-import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsAppMsgWorker;
+import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsAppHPMsgSrvWorker;
 import net.echinopsii.ariane.community.messaging.common.MomClientFactory;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import org.junit.AfterClass;
@@ -65,7 +64,7 @@ public class FireAndForgetTest {
     final static String sendedMsgBody = "Hello NATS";
     final static byte[] highPayloadBody = new byte[2000000];
 
-    class TestMsgWorker extends MomAkkaAbsAppMsgWorker {
+    class TestMsgWorker extends MomAkkaAbsAppHPMsgSrvWorker {
         boolean OK = false;
         byte[] msgBody = null;
 
