@@ -79,7 +79,6 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                 if (splitCount > 1) {
                     if (super.getMsgWorker() instanceof MomAkkaAbsAppHPMsgSrvWorker) {
                         String msgSplitID = (String) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_MID);
-                        log.error("{" + msgSplitID + "; " + splitCount + "; " + splitOID + "}");
                         Message[] wipMsgChunks;
                         if (!((MomAkkaAbsAppHPMsgSrvWorker)super.getMsgWorker()).wipMsg.containsKey(msgSplitID)) {
                             wipMsgChunks = new Message[splitCount];
