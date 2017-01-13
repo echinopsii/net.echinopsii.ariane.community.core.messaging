@@ -65,22 +65,33 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
                 }
 
                 boolean errorOnSplit = false;
-                if (((HashMap)tasteMessage).containsKey(MomMsgTranslator.MSG_SPLIT_COUNT) &&
-                        (int)((HashMap)tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT) > 1) {
+                int splitCount = -1 ;
+                int splitOID = -1;
+                if (tasteMessage.get(MomMsgTranslator.MSG_SPLIT_COUNT) instanceof Integer)
+                    splitCount = (int)tasteMessage.get(MomMsgTranslator.MSG_SPLIT_COUNT);
+                else if (tasteMessage.get(MomMsgTranslator.MSG_SPLIT_COUNT) instanceof Long)
+                    splitCount = MsgTranslator.safeLongToInt((Long) tasteMessage.get(MomMsgTranslator.MSG_SPLIT_COUNT));
+                if (tasteMessage.get(MomMsgTranslator.MSG_SPLIT_OID) instanceof Integer)
+                    splitOID = (int)tasteMessage.get(MomMsgTranslator.MSG_SPLIT_OID);
+                else if (tasteMessage.get(MomMsgTranslator.MSG_SPLIT_OID) instanceof Long)
+                    splitOID = MsgTranslator.safeLongToInt((Long) tasteMessage.get(MomMsgTranslator.MSG_SPLIT_OID));
+
+                if (splitCount > 1) {
                     if (super.getMsgWorker() instanceof MomAkkaAbsAppHPMsgSrvWorker) {
                         String msgSplitID = (String) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_MID);
+                        log.error("{" + msgSplitID + "; " + splitCount + "; " + splitOID + "}");
                         Message[] wipMsgChunks;
                         if (!((MomAkkaAbsAppHPMsgSrvWorker)super.getMsgWorker()).wipMsg.containsKey(msgSplitID)) {
-                            wipMsgChunks = new Message[(int) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT)];
+                            wipMsgChunks = new Message[splitCount];
                             ((MomAkkaAbsAppHPMsgSrvWorker)super.getMsgWorker()).wipMsg.put(msgSplitID, wipMsgChunks);
                             ((MomAkkaAbsAppHPMsgSrvWorker)super.getMsgWorker()).wipMsgCount.put(msgSplitID, 0);
                         } else wipMsgChunks = (Message[]) ((MomAkkaAbsAppHPMsgSrvWorker)super.getMsgWorker()).wipMsg.get(msgSplitID);
 
-                        wipMsgChunks[(int) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_OID)] = (Message) message;
+                        wipMsgChunks[splitOID] = (Message) message;
                         int count = ((MomAkkaAbsAppHPMsgSrvWorker)super.getMsgWorker()).wipMsgCount.get(msgSplitID) + 1;
                         ((MomAkkaAbsAppHPMsgSrvWorker)super.getMsgWorker()).wipMsgCount.put(msgSplitID, count);
 
-                        if (((MomAkkaAbsAppHPMsgSrvWorker)super.getMsgWorker()).wipMsgCount.get(msgSplitID).equals((int) ((HashMap) tasteMessage).get(MomMsgTranslator.MSG_SPLIT_COUNT))) {
+                        if (((MomAkkaAbsAppHPMsgSrvWorker)super.getMsgWorker()).wipMsgCount.get(msgSplitID).equals(splitCount)) {
                             finalMessage = ((MsgTranslator) super.getTranslator()).decode(wipMsgChunks);
                             ((MomAkkaAbsAppHPMsgSrvWorker)super.getMsgWorker()).wipMsg.remove(msgSplitID);
                             ((MomAkkaAbsAppHPMsgSrvWorker)super.getMsgWorker()).wipMsgCount.remove(msgSplitID);

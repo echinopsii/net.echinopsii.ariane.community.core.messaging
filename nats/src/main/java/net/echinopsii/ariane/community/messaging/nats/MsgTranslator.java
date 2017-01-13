@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.*;
 
 public class MsgTranslator implements MomMsgTranslator<Message[]> {
@@ -46,7 +45,13 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
         MSG_MAX_SIZE = maxPayload;
     }
 
-
+    public static int safeLongToInt(long l) {
+        if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException
+                    (l + " cannot be cast to int without changing its value.");
+        }
+        return (int) l;
+    }
 
     private static int getBSONMsgPayloadSize(Map<String, Object> msg) {
         int ret = 0;
@@ -234,8 +239,8 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
                 wipENATSMsg.getProperties().put(MSG_SPLIT_COUNT, Integer.MAX_VALUE); //TO BE REDEFINE
                 wipENATSMsg.getProperties().put(MSG_SPLIT_OID, splitOID);
                 if (message.get(MSG_TRACE)!=null) wipENATSMsg.getProperties().put(MSG_TRACE, message.get(MSG_TRACE));
-                if (message.get(MSG_MESSAGE_ID)!=null) wipENATSMsg.getProperties().put(MSG_MESSAGE_ID, message.get(MSG_APPLICATION_ID));
-                if (message.get(MSG_CORRELATION_ID)!=null) wipENATSMsg.getProperties().put(MSG_MESSAGE_ID, message.get(MSG_CORRELATION_ID));
+                if (message.get(MSG_MESSAGE_ID)!=null) wipENATSMsg.getProperties().put(MSG_MESSAGE_ID, message.get(MSG_MESSAGE_ID));
+                if (message.get(MSG_CORRELATION_ID)!=null) wipENATSMsg.getProperties().put(MSG_CORRELATION_ID, message.get(MSG_CORRELATION_ID));
 
                 // push properties first
                 for (String key: message.keySet()) {
@@ -321,15 +326,39 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
                     decodedMessage.putAll(extendedNATSMessage.getProperties());
                     if (extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) == null || extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) == 1)
                         decodedMessage.put(MSG_BODY, extendedNATSMessage.getBody());
-                    else if (((int)extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT)) == message.length && extendedNATSMessage.getBody() != null) {
-                        if (bodyChunks==null) bodyChunks = new byte[(int)extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT)][];
-                        bodyChunks[(int) extendedNATSMessage.getProperties().get(MSG_SPLIT_OID)] = extendedNATSMessage.getBody();
+                    else {
+                        int splitCount = -1 ;
+                        int splitOID = -1;
+                        if (extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) instanceof Integer)
+                            splitCount = (int)extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT);
+                        else if (extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) instanceof Long)
+                            splitCount = safeLongToInt((long)extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT));
+                        if (extendedNATSMessage.getProperties().get(MSG_SPLIT_OID) instanceof Integer)
+                            splitOID = (int)extendedNATSMessage.getProperties().get(MSG_SPLIT_OID);
+                        else if (extendedNATSMessage.getProperties().get(MSG_SPLIT_OID) instanceof Long)
+                            splitOID = safeLongToInt((long)extendedNATSMessage.getProperties().get(MSG_SPLIT_OID));
+
+                        if (splitCount == message.length && extendedNATSMessage.getBody() != null) {
+                            if (bodyChunks==null) bodyChunks = new byte[splitCount][];
+                            bodyChunks[splitOID] = extendedNATSMessage.getBody();
+                        }
                     }
                     initDone = true;
                 } else {
                     decodedMessage.putAll(extendedNATSMessage.getProperties());
-                    if (bodyChunks==null) bodyChunks = new byte[(int)extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT)][];
-                    bodyChunks[(int) extendedNATSMessage.getProperties().get(MSG_SPLIT_OID)] = extendedNATSMessage.getBody();
+                    int splitCount = -1 ;
+                    int splitOID = -1;
+                    if (extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) instanceof Integer)
+                        splitCount = (int)extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT);
+                    else if (extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) instanceof Long)
+                        splitCount = safeLongToInt((long)extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT));
+                    if (extendedNATSMessage.getProperties().get(MSG_SPLIT_OID) instanceof Integer)
+                        splitOID = (int)extendedNATSMessage.getProperties().get(MSG_SPLIT_OID);
+                    else if (extendedNATSMessage.getProperties().get(MSG_SPLIT_OID) instanceof Long)
+                        splitOID = safeLongToInt((long)extendedNATSMessage.getProperties().get(MSG_SPLIT_OID));
+
+                    if (bodyChunks==null) bodyChunks = new byte[splitCount][];
+                    bodyChunks[splitOID] = extendedNATSMessage.getBody();
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -338,9 +367,7 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
 
         if (bodyChunks!=null) {
             int bodySize = 0;
-            for (byte[] bodyChunk : bodyChunks) {
-                bodySize += bodyChunk.length;
-            }
+            for (byte[] bodyChunk : bodyChunks) bodySize += bodyChunk.length;
             byte[] reconstructedBody = new byte[bodySize];
             int idx = 0;
             for (byte[] bodyChunk : bodyChunks)
