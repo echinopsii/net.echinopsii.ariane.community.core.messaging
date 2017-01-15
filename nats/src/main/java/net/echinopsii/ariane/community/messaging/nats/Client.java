@@ -32,6 +32,9 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.util.Dictionary;
 
+/**
+ * Client class implementing {@link net.echinopsii.ariane.community.messaging.api.MomClient} interface for NATS MoM
+ */
 public class Client extends MomAkkaAbsClient implements MomClient {
 
     private static final Logger log = MomLoggerFactory.getLogger(Client.class);
@@ -39,6 +42,24 @@ public class Client extends MomAkkaAbsClient implements MomClient {
     private Connection connection = null;
     private ConnectionFactory factory = null;
 
+    /**
+     * Initialize NATS connection with provided properties and this client ServiceFactory.
+     * <br/>
+     * Following properties fields MUST be defined :
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_HOST}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_PORT}
+     * <br/>
+     * Following properties fields MAY be defined:
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_USER}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_PSWD}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_CLI_MSG_DEBUG_ON_TIMEOUT}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_CLI_ROUTEES_NB_PER_SERVICE}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_CLI_RPC_TIMEOUT}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_CLI_RPC_RETRY}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#NATS_CONNECTION_NAME}
+     * @param properties
+     * @throws Exception
+     */
     @Override
     public void init(Dictionary properties) throws Exception {
         if (properties.get(NATS_CONNECTION_NAME)!=null)
@@ -76,6 +97,11 @@ public class Client extends MomAkkaAbsClient implements MomClient {
         super.setServiceFactory(new ServiceFactory(this));
     }
 
+    /**
+     * Close this client. This will stop any underlying RequestExecutor, Services and Akka supervisors.
+     * It will finally close the NATS connection
+     * @throws Exception
+     */
     @Override
     public void close() throws Exception {
         for (MomRequestExecutor rexec : super.getRequestExecutors())
@@ -91,16 +117,28 @@ public class Client extends MomAkkaAbsClient implements MomClient {
             connection.close();
     }
 
+    /**
+     *
+     * @return the client NATS connection
+     */
     @Override
     public Connection getConnection() {
         return connection;
     }
 
+    /**
+     *
+     * @return true if connected on configured NATS broker
+     */
     @Override
     public boolean isConnected() {
         return !connection.isClosed();
     }
 
+    /**
+     * Create a new RequestExecutor and add it into the client request executors registry
+     * @return the fresh new created MomRequestExecutor
+     */
     @Override
     public MomRequestExecutor createRequestExecutor() {
         MomRequestExecutor ret = null;
@@ -113,6 +151,10 @@ public class Client extends MomAkkaAbsClient implements MomClient {
         return ret;
     }
 
+    /**
+     * Close the message group ID and any resources attached to it.
+     * @param groupID the message group ID
+     */
     @Override
     public void closeMsgGroupRequest(String groupID) {
         for (MomRequestExecutor requestExecutor : super.getRequestExecutors())
@@ -120,6 +162,10 @@ public class Client extends MomAkkaAbsClient implements MomClient {
         super.closeMsgGroupRequest(groupID);
     }
 
+    /**
+     * (internal usage)
+     * @return the NATS connection factory
+     */
     public ConnectionFactory getFactory() {
         return factory;
     }

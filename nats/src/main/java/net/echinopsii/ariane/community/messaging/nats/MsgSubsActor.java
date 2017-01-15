@@ -31,9 +31,20 @@ import org.slf4j.Logger;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * MsgSubsActor class extending {@link net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsSubsActor} abstract class for NATS MoM
+ */
 public class MsgSubsActor extends MsgAkkaAbsSubsActor {
     private static final Logger log = MomLoggerFactory.getLogger(MsgSubsActor.class);
 
+    /**
+     * (internal usage only)
+     * Return Akka actor Props to spawn a new MsgRequestActor through Akka.
+     * Should not be called outside {@link net.echinopsii.ariane.community.messaging.nats.ServiceFactory#subscriberService(String, String, AppMsgWorker)}
+     *
+     * @param worker the AppMsgWorker in charge of subscription message feed treatment
+     * @return Akka actor Props
+     */
     public static Props props(final AppMsgWorker worker) {
         return Props.create(new Creator<MsgSubsActor>() {
             private static final long serialVersionUID = 1L;
@@ -45,12 +56,28 @@ public class MsgSubsActor extends MsgAkkaAbsSubsActor {
         });
     }
 
+    /**
+     * (internal usage only)
+     * MsgSubsActor constructor. Should not be called outside {@link this#props}
+     *
+     * @param worker the AppMsgWorker in charge of subscription message feed treatment
+     */
     public MsgSubsActor(AppMsgWorker worker) {
         super(worker, new MsgTranslator());
     }
 
+    /**
+     * {@link akka.actor.UntypedActor#onReceive(Object)} implementation.
+     * if message instance of {@link io.nats.client.Message} :
+     * <br/> decode the message
+     * <br/> if splitted message cache the current message. if all splitted message has been received rebuild the final message and clear the cache.
+     * <br/> else the message is the final message
+     * <br/> if final message is not null then request treatment from attached worker.
+     * else unhandled
+     * @param message the akka message received by actor
+     */
     @Override
-    public void onReceive(Object message) throws Exception {
+    public void onReceive(Object message) {
         if (message instanceof Message) {
             Map<String, Object> finalMessage = null;
             Map<String, Object> tasteMessage = ((MsgTranslator) super.getTranslator()).decode(new Message[]{(Message) message});

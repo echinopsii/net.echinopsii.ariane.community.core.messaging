@@ -32,11 +32,14 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+/**
+ * RequestExecutor class extending {@link net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecutor} abstract class
+ * and implements {@link net.echinopsii.ariane.community.messaging.api.MomRequestExecutor} for NATS MoM.
+ */
 public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
     private static final Logger log = MomLoggerFactory.getLogger(RequestExecutor.class);
 
@@ -62,6 +65,12 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         this.RPC(request, destination, msgSplitDest + "_END_RET", null);
     }
 
+    /**
+     * Fire And Forget : send request to target destination and manage message split if needed
+     * @param request the request message
+     * @param destination the target destination queue
+     * @return
+     */
     @Override
     public Map<String, Object> FAF(Map<String, Object> request, String destination) {
         request.put(MsgTranslator.MSG_NATS_SUBJECT, destination);
@@ -103,6 +112,16 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         return request;
     }
 
+    /**
+     * Remote procedure call : send request to target destination (manage message split if needed) and wait answer to be treated
+     * by the answer worker.
+     * @param request the request message
+     * @param destination the target destination queue
+     * @param answerSource the source to get the answer from
+     * @param answerWorker the worker object to treat the answer
+     * @return the answer (treated or not by answer worker)
+     * @throws TimeoutException if no answers has been receiver after timeout * retry
+     */
     @Override
     public Map<String, Object> RPC(Map<String, Object> request, String destination, String answerSource, AppMsgWorker answerWorker) throws TimeoutException {
         Map<String, Object> response = null;
@@ -153,7 +172,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         try {
             Message[] msgResponse = null;
             Message wipMsgResponse = null;
-            long beginWaitingAnswer = 0;
+            long beginWaitingAnswer;
 
             SyncSubscription subs;
             if (groupID!=null) {
@@ -257,6 +276,10 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         return response;
     }
 
+    /**
+     * close groupID message group answer subscriptions and clean registry
+     * @param groupID message group ID
+     */
     public void cleanGroupReqResources(String groupID) {
         if (this.sessionsRPCSubs.get(groupID)!=null) {
             for (String replySource : this.sessionsRPCSubs.get(groupID).keySet())

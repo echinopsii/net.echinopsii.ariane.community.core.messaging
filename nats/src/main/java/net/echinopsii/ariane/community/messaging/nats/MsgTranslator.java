@@ -41,10 +41,19 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
     public final static String MSG_NATS_SUBJECT = "MSG_NATS_SUBJECT";
     public static long MSG_MAX_SIZE = 0;
 
+    /**
+     * MSG MAX SIZE setter
+     * @param maxPayload supported by NATS broker
+     */
     public static void setMsgMaxSize(long maxPayload) {
         MSG_MAX_SIZE = maxPayload;
     }
 
+    /**
+     * static helper to transform long into int (usefull when message are coming from python where int are always long)
+     * @param l to transform as int
+     * @return the integer value of l
+     */
     public static int safeLongToInt(long l) {
         if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
             throw new IllegalArgumentException
@@ -53,6 +62,11 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
         return (int) l;
     }
 
+    /**
+     * evaluate message payload size
+     * @param msg the message to evaluate
+     * @return the message payload size
+     */
     private static int getBSONMsgPayloadSize(Map<String, Object> msg) {
         int ret = 0;
         HashMap<String, Object> propMap = new HashMap<>(msg);
@@ -71,7 +85,7 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
         }
 
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-        JsonGenerator jgenerator = null;
+        JsonGenerator jgenerator;
         try {
             jgenerator = ToolBox.jFactory.createJsonGenerator(outStream, JsonEncoding.UTF8);
             jgenerator.writeStartObject();
@@ -83,15 +97,16 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
             jgenerator.writeEndObject();
             jgenerator.close();
             ret = ToolBox.getOuputStreamContent(outStream, "UTF-8").getBytes().length;
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (PropertiesException e) {
+        } catch (IOException | PropertiesException e) {
             e.printStackTrace();
         }
         return ret;
     }
 
-    class ExtendedNATSMessage {
+    /**
+     * Nested class helper to serialize BSon NATS message with properties and body.
+     */
+    private static class ExtendedNATSMessage {
         HashMap<String, Object> properties = new HashMap<>();
         byte[] body ;
 
@@ -114,7 +129,7 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
         public byte[] toBSON() {
             ByteArrayOutputStream outStream = new ByteArrayOutputStream();
             String result = "";
-            JsonGenerator jgenerator = null;
+            JsonGenerator jgenerator;
             try {
                 jgenerator = ToolBox.jFactory.createJsonGenerator(outStream, JsonEncoding.UTF8);
                 jgenerator.writeStartObject();
@@ -126,16 +141,17 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
                 jgenerator.writeEndObject();
                 jgenerator.close();
                 result = ToolBox.getOuputStreamContent(outStream, "UTF-8");
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (PropertiesException e) {
+            } catch (IOException | PropertiesException e) {
                 e.printStackTrace();
             }
             return result.getBytes();
         }
     }
 
-    static class JSONDeserializedExtendedNATSMessage {
+    /**
+     * Nested class helper to deserialize incoming message.
+     */
+    private static class JSONDeserializedExtendedNATSMessage {
         List<PropertiesJSON.TypedPropertyField> properties;
         byte[] body ;
 
@@ -163,7 +179,7 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
         ExtendedNATSMessage extendedNATSMessage = new ExtendedNATSMessage();
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        String payload_s = new String((byte [])payload);//.split("\n")[0];
+        String payload_s = new String(payload);//.split("\n")[0];
         JSONDeserializedExtendedNATSMessage jsonDeserializedExtendedNATSMessage = mapper.readValue(payload_s, JSONDeserializedExtendedNATSMessage.class);
         extendedNATSMessage.setBody(jsonDeserializedExtendedNATSMessage.getBody());
         for (PropertiesJSON.TypedPropertyField deserializedProperty : jsonDeserializedExtendedNATSMessage.getProperties()) {
@@ -173,12 +189,17 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
         return extendedNATSMessage;
     }
 
+    /**
+     * Encode provide Map message into array of NATS Message. Split input Map message into several NATS message if needed.
+     * @param message
+     * @return array of NATS message
+     */
     @Override
     public Message[] encode(Map<String, Object> message) {
-        Message[] ret = null;
+        Message[] ret ;
 
         int bsonMsgPayloadSize =  ((message.get(MSG_REPLY_TO)!=null) ? MSG_REPLY_TO.getBytes().length + message.get(MSG_REPLY_TO).toString().getBytes().length : 0) +
-                                  ((message.get(MSG_NATS_SUBJECT)!=null) ? MSG_NATS_SUBJECT.getBytes().length + message.get(MSG_NATS_SUBJECT).toString().getBytes().length : 0);;
+                                  ((message.get(MSG_NATS_SUBJECT)!=null) ? MSG_NATS_SUBJECT.getBytes().length + message.get(MSG_NATS_SUBJECT).toString().getBytes().length : 0);
         int natsPropsSize = getBSONMsgPayloadSize(message);
 
         if (bsonMsgPayloadSize < (MSG_MAX_SIZE - natsPropsSize)) {
@@ -209,7 +230,7 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
             finalMessage.setData(data);
             ret = new Message[]{finalMessage};
         } else {
-            String splitMID = null;
+            String splitMID;
             synchronized (UUID.class) {
                 splitMID = UUID.randomUUID().toString();
             }
@@ -233,7 +254,7 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
             ArrayList<ExtendedNATSMessage> splittedENATSMsg = new ArrayList<>();
             int splitOID = 0;
             while((wipBodyLength - consumedBodyOffset)>0 || wipMsgField.size()>0) {
-                int wipENATSMsgLength = 0;
+                int wipENATSMsgLength;
                 ExtendedNATSMessage wipENATSMsg = new ExtendedNATSMessage();
                 wipENATSMsg.getProperties().put(MSG_SPLIT_MID, splitMID);
                 wipENATSMsg.getProperties().put(MSG_SPLIT_COUNT, Integer.MAX_VALUE); //TO BE REDEFINE
@@ -310,9 +331,14 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
         return ret;
     }
 
+    /**
+     * Decode array of NATS message into Map message
+     * @param message array of NATS message
+     * @return Map message
+     */
     @Override
     public Map<String, Object> decode(Message[] message) {
-        LinkedHashMap<String, Object> decodedMessage = new LinkedHashMap();
+        LinkedHashMap<String, Object> decodedMessage = new LinkedHashMap<>();
         byte[][] bodyChunks = null;
 
         boolean initDone = false;
