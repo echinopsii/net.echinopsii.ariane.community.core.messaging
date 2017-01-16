@@ -35,6 +35,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * MsgTranslator class implementing {@link net.echinopsii.ariane.community.messaging.api.MomMsgTranslator} interface for NATS MoM
+ */
 public class MsgTranslator implements MomMsgTranslator<Message[]> {
     private static final Logger log = MomLoggerFactory.getLogger(MsgTranslator.class);
 
@@ -191,7 +194,7 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
 
     /**
      * Encode provide Map message into array of NATS Message. Split input Map message into several NATS message if needed.
-     * @param message
+     * @param message input map message
      * @return array of NATS message
      */
     @Override
