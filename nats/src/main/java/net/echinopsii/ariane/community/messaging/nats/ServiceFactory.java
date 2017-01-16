@@ -52,7 +52,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
      * Create a new request router in charge of spawning request workers
      *
      * @param source request source queue
-     * @param client nats MomClient
+     * @param client initialized NATS Client
      * @param requestCB application message worker to treat request
      * @param supervisor actor supervisor
      * @param nbRoutees number of routees to be managed by the new router
@@ -76,7 +76,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
      * Create a new request router in charge of spawning request workers. Number of request workers is defined in the client configuration.
      *
      * @param source request source queue
-     * @param client nats MomClient
+     * @param client initialized NATS Client
      * @param requestCB application message worker to treat request
      * @param supervisor actor supervisor
      * @param cache tell if reply must be cached in case of retry
@@ -92,7 +92,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
      *
      * @param source request source queue
      * @param requestActor request actor ref to treat the message
-     * @param client nats MomClient
+     * @param client initialized NATS Client
      * @return the new MomConsumer
      */
     private static MomConsumer createConsumer(final String source, final ActorRef requestActor, final MomClient client) {
@@ -168,7 +168,7 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
      *
      * @param source request source queue
      * @param requestCB application message worker to treat request
-     * @param client nats MomClient
+     * @param client initialized NATS Client
      * @return the fresh new MomMsgGroupServiceMgr
      */
     private static MomMsgGroupServiceMgr createMsgGroupServiceManager(final String source, final AppMsgWorker requestCB, final MomClient client) {
@@ -294,20 +294,20 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
     /**
      * Create a new subscriber service.
      *
-     * @param source the feed source
+     * @param baseSource the feed base source
      * @param selector the selector on the feed source (can be null)
      * @param feedWorker the feed message worker
      * @return the new subscriber service
      */
     @Override
-    public MomAkkaService subscriberService(String source, String selector, AppMsgWorker feedWorker) {
+    public MomAkkaService subscriberService(String baseSource, String selector, AppMsgWorker feedWorker) {
         MomAkkaService ret = null;
         ActorRef    subsActor ;
         MomConsumer consumer  ;
         final Connection connection = ((Client)super.getMomClient()).getConnection();
 
         if (connection != null && !connection.isClosed()) {
-            final String subject = source + ((selector !=null && !selector.equals("")) ? "." + selector : ".*");
+            final String subject = baseSource + ((selector !=null && !selector.equals("")) ? "." + selector : ".*");
             subsActor = super.getMomClient().getActorSystem().actorOf(MsgSubsActor.props(feedWorker), subject + "_msgWorker");
             consumer = ServiceFactory.createConsumer(subject, subsActor, super.getMomClient());
             consumer.start();
