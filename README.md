@@ -14,7 +14,7 @@ through RabbitMQ first and then [map](https://slack-files.com/T04JMETB8-F1LTAMFG
 As we wanted being able to reuse same messaging API through other messaging middleware we wanted to keep this API as simple as possible. 
 Today we also use this API with [NATS] (http://nats.io/) and Ariane is using it a lot as described [here](http://nats.io/blog/ariane-mapping-microservice-with-nats/).
 
-Finally we wanted to use actor model provided by [Akka](http://akka.io/) to define business logic call back on top of this API calls - and so being able to reuse Akka powerful tooling like routers.
+Finally we wanted to use actor model provided by [Akka](http://akka.io/) to define business logic call back through this API calls - and so being able to reuse Akka powerful tooling like routers.
 
 # Some technical inputs
 
@@ -45,8 +45,12 @@ mom_host.rbq_vhost=/ariane
 Then you're ready to create the API client which will connect to the message broker like this : 
 
 ```
+import net.echinopsii.ariane.community.messaging.common.MomClientFactory
+import net.echinopsii.ariane.community.messaging.api.MomClient
+...
+
 Properties props = new Properties();
-props.load(ClientTest.class.getResourceAsStream("/nats-test.properties"));
+props.load(ClientTest.class.getResourceAsStream("/my_broker_config.properties"));
 client = MomClientFactory.make(props.getProperty(MomClient.MOM_CLI));
 try {
     client.init(props);
@@ -55,6 +59,10 @@ try {
     System.err.println("Connection failture ! ");
     client = null;
 }
+
+...
+
+client.close();
 ```
 
 ## Simple messages
@@ -76,7 +84,7 @@ Bellow are some pre defined fields you will find in the API :
 | MSG_PRIORITY       | Define message priority                          | IGNORED      | OK               |
 | MSG_REPLY_TO       | Define message reply destination                 | OK           | OK               |
 | MSG_TIMESTAMP      | Define message timestamp                         | OK           | OK               |
-| MSG_TYPE           | Define message type                              | IGNORED      | IGNORED          |
+| MSG_TYPE           | Define message type                              | IGNORED      | OK               |
 | MSG_RC             | Define return code on the reply                  | OK           | OK               |
 | MSG_ERR            | Define message error if any                      | OK           | OK               |
 | MSG_BODY           | Define the message body (IE: you app data)       | OK           | OK               |
@@ -89,6 +97,67 @@ Depending on your needs you can also reuse some broker specific message fields
 
 Through this pattern you just want to send a request to a server but in this case you don't need the reply.
 
+#### Server side
+
+On the server side you first need to create your business logic and then create a service which will listen a request queue and forward messages to your business callback. 
+
+```
+import net.echinopsii.ariane.community.messaging.common.MomClientFactory
+import net.echinopsii.ariane.community.messaging.api.MomClient
+import net.echinopsii.ariane.community.messaging.api.AppMsgWorker
+...
+
+final static String sendedMsgBody = "Hello !";
+
+class TestMsgWorker implements AppMsgWorker {
+
+    boolean OK = false;
+
+    @Override
+    public Map<String, Object> apply(Map<String, Object> message) {
+        String recvMsgBody = new String((byte [])message.get(MomMsgTranslator.MSG_BODY));
+        if (recvMsgBody.equals(sendedMsgBody))
+            OK = true;
+        // no reply needed : return null
+        return null;
+    }
+
+    public boolean isOK() {
+        return OK;
+    }
+}
+
+// my application business logic 
+TestMsgWorker test = new TestMsgWorker();
+
+// my service listening to "FAF_QUEUE"
+client.getServiceFactory().requestService("FAF_QUEUE", test);
+```
+
+*Behind the scene:*
+a message consumer on "FAF_QUEUE" is created as well as a akka router and several akka routees (5 by default but can be overrided 
+in the configuration with mom_cli.nb_routees_per_service property field).
+The message consumer will forward the message as is to the akka router which will then forward the message to one of its routees (round robin). 
+The routee is in charge of decoding the message from its technical definition (NATS or RabbitMQ) to the Messaging API message definition (a map !) and 
+finally forward it to the AppMsgWorker through its apply method. 
+
+#### Client side 
+ 
+On the client side you just need to define a message and send your request in fire and forget fashion.
+ 
+```
+import net.echinopsii.ariane.community.messaging.common.MomClientFactory
+import net.echinopsii.ariane.community.messaging.api.MomClient
+...
+
+// create the message 
+Map<String, Object> message = new HashMap<String, Object>();
+message.put(MomMsgTranslator.MSG_BODY, sendedMsgBody);
+
+// send the request
+client.createRequestExecutor().FAF(message, "FAF_QUEUE");
+```
+ 
 ### RPC
 
 ### Feeder/Subscriber
@@ -98,5 +167,6 @@ Through this pattern you just want to send a request to a server but in this cas
 + Manage TLS/SSL connection to brokers
 + Manage connection on cluster
 + Provide Google ProtoBuff serialization
++ Documentation for actors configuration
 + Documentation for message grouping and session 
 + Documentation for NATS message splitting
