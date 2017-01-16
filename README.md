@@ -11,12 +11,51 @@ messages flow patterns API to fit Ariane Framework needs.
 The first need was the ability to create [a testing environment simulating trade applications workflow] (https://github.com/echinopsii/net.echinopsii.ariane.scenarios)
 through RabbitMQ first and then [map](https://slack-files.com/T04JMETB8-F1LTAMFGB-4194f337a9) this environment thanks Ariane Framework and the [Ariane RabbitMQ plugin] (https://github.com/echinopsii/net.echinopsii.ariane.community.plugin.rabbitmq).
 
-As we wanted being able to reuse same messaging API through other messaging middleware we want to keep this API as simple as possible. 
-Today we can also use this API with [NATS] (http://nats.io/).
+As we wanted being able to reuse same messaging API through other messaging middleware we wanted to keep this API as simple as possible. 
+Today we also use this API with [NATS] (http://nats.io/) and Ariane is using it a lot as described [here](http://nats.io/blog/ariane-mapping-microservice-with-nats/).
 
-Finally we wanted to use Actor Model provided by [Akka](http://akka.io/) to define business logic call back on top of this API calls - and so being able to reuse Akka powerful tooling like routers.
+Finally we wanted to use actor model provided by [Akka](http://akka.io/) to define business logic call back on top of this API calls - and so being able to reuse Akka powerful tooling like routers.
 
 # Some technical inputs
+
+## Configuration and connection to the messaging broker
+
+The first step to use this module is to configure it depending the broker you need. Bellow are java properties files which are used to initialize and then connect our testing unit to the brokers:
+
++ NATS
+```
+mom_cli.nats.connection_name=TestConnection
+mom_cli.impl=net.echinopsii.ariane.community.messaging.nats.Client
+mom_host.fqdn=localhost
+mom_host.port=4222
+mom_host.user=ariane
+mom_host.password=password
+```
+
++ RabbitMQ 
+```
+mom_cli.impl=net.echinopsii.ariane.community.messaging.rabbitmq.Client
+mom_host.fqdn=localhost
+mom_host.port=5672
+mom_host.user=ariane
+mom_host.password=password
+mom_host.rbq_vhost=/ariane
+```
+
+Then you're ready to create the API client which will connect to the message broker like this : 
+
+```
+Properties props = new Properties();
+props.load(ClientTest.class.getResourceAsStream("/nats-test.properties"));
+client = MomClientFactory.make(props.getProperty(MomClient.MOM_CLI));
+try {
+    client.init(props);
+} catch (Exception e) {
+    e.printStackTrace();
+    System.err.println("Connection failture ! ");
+    client = null;
+}
+```
 
 ## Simple messages
 
@@ -27,25 +66,32 @@ The API implementation will then do the plumbing for you.
 
 Bellow are some pre defined fields you will find in the API :
 
-| Field name                          | Field description                                | RabbitMQ impl support | NATS support |
-| ----------------------------------- | ------------------------------------------------ | --------------------- | ------------ |
-| MomMsgTranslator.MSG_APPLICATION_ID | Define message application id source             | OK                    | OK           |
-| MomMsgTranslator.MSG_MESSAGE_ID     | Define message ID                                | OK                    | OK           |
-| MomMsgTranslator.MSG_CORRELATION_ID | Define message correlation ID                    | OK                    | OK           |
-| MomMsgTranslator.MSG_DELIVERY_MODE  | Define message delivery mode (persistent or not) | OK                    | IGNORED      |
-| MomMsgTranslator.MSG_EXPIRATION     | Define message expiration                        | OK                    | IGNORED      |
-| MomMsgTranslator.MSG_PRIORITY       | Define message priority                          | OK                    | IGNORED      |
-| MomMsgTranslator.MSG_REPLY_TO       | Define message reply destination                 | OK                    | OK           |
-| MomMsgTranslator.MSG_TIMESTAMP      | Define message timestamp                         | OK                    | OK           |
-| MomMsgTranslator.MSG_TYPE           | Define message type                              | OK                    | IGNORED      |
-| MomMsgTranslator.MSG_RC             | Define return code on the reply                  | OK                    | OK           |
-| MomMsgTranslator.MSG_ERR            | Define message error if any                      | OK                    | OK           |
+| Field name         | Field description                                | NATS support | RabbitMQ support |
+| ------------------ | ------------------------------------------------ | ------------ | ---------------- |
+| MSG_APPLICATION_ID | Define message application id source             | OK           | OK               |
+| MSG_MESSAGE_ID     | Define message ID                                | OK           | OK               |
+| MSG_CORRELATION_ID | Define message correlation ID                    | OK           | OK               |
+| MSG_DELIVERY_MODE  | Define message delivery mode (persistent or not) | IGNORED      | OK               |
+| MSG_EXPIRATION     | Define message expiration                        | IGNORED      | OK               |
+| MSG_PRIORITY       | Define message priority                          | IGNORED      | OK               |
+| MSG_REPLY_TO       | Define message reply destination                 | OK           | OK               |
+| MSG_TIMESTAMP      | Define message timestamp                         | OK           | OK               |
+| MSG_TYPE           | Define message type                              | IGNORED      | IGNORED          |
+| MSG_RC             | Define return code on the reply                  | OK           | OK               |
+| MSG_ERR            | Define message error if any                      | OK           | OK               |
+| MSG_BODY           | Define the message body (IE: you app data)       | OK           | OK               |
+
+Depending on your needs you can also reuse some broker specific message fields 
 
 ## Simple flow patterns
 
-### RPC pattern
+### Fire and forget
 
-### Feeder/Subscriber pattern
+Through this pattern you just want to send a request to a server but in this case you don't need the reply.
+
+### RPC
+
+### Feeder/Subscriber
 
 # TODO
 
