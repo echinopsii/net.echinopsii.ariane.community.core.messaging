@@ -19,24 +19,41 @@
 
 package net.echinopsii.ariane.community.messaging.rabbitmq;
 
+import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.japi.Creator;
 import com.rabbitmq.client.*;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.api.MomClient;
 import net.echinopsii.ariane.community.messaging.api.MomLogger;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import net.echinopsii.ariane.community.messaging.common.MomLoggerFactory;
 import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsRequestActor;
 import org.slf4j.Logger;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * MsgRequestActor class extending {@link net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsRequestActor} abstract class for RabbitMQ MoM
+ */
 public class MsgRequestActor extends MsgAkkaAbsRequestActor {
     private static final Logger log = MomLoggerFactory.getLogger(MsgRequestActor.class);
 
     private Channel      channel     = null;
 
+    /**
+     * (internal usage only)
+     * Return Akka actor Props to spawn a new MsgRequestActor through Akka.
+     * Should not be called outside {@link net.echinopsii.ariane.community.messaging.rabbitmq.ServiceFactory#createRequestActor(String, MomClient, Channel, AppMsgWorker, ActorRef, boolean)}
+     * or {@link net.echinopsii.ariane.community.messaging.rabbitmq.ServiceFactory#createRequestRouter(String, MomClient, Channel, AppMsgWorker, ActorRef, boolean)}
+     *
+     * @param mclient the initialized RabbitMQ client
+     * @param worker the AppMsgWorker in charge of request treatment
+     * @param cache if true will cache last reply in case of retry
+     * @return Akka actor Props
+     */
     public static Props props(final Client mclient, final Channel channel, final AppMsgWorker worker, final boolean cache) {
         return Props.create(new Creator<MsgRequestActor>() {
             private static final long serialVersionUID = 1L;
@@ -48,13 +65,30 @@ public class MsgRequestActor extends MsgAkkaAbsRequestActor {
         });
     }
 
+    /**
+     * (internal usage only)
+     * MsgRequestActor constructor. Should not be called outside {@link this#props}
+     *
+     * @param mclient the initialized RabbitMQ client
+     * @param worker the AppMsgWorker in charge of request treatment
+     * @param cache if true will cache last reply in case of retry
+     */
     public MsgRequestActor(Client mclient, Channel chan, AppMsgWorker worker, boolean cache) {
         super(mclient, worker, new MsgTranslator(), cache);
         channel = chan;
     }
 
+    /**
+     * {@link akka.actor.UntypedActor#onReceive(Object)} implementation.
+     * if message instance of {@link com.rabbitmq.client.QueueingConsumer.Delivery} :
+     * <br/> decode the message
+     * <br/> then request treatment from attached worker and send reply if needed.
+     * else unhandled
+     * @param message the akka message received by actor
+     * @throws IOException if problem encountered while publishing reply or ack request
+     */
     @Override
-    public void onReceive(Object message) throws Exception {
+    public void onReceive(Object message) throws IOException {
         if (message instanceof QueueingConsumer.Delivery) {
             Envelope envelope = ((QueueingConsumer.Delivery) message).getEnvelope();
             BasicProperties properties = ((QueueingConsumer.Delivery) message).getProperties();

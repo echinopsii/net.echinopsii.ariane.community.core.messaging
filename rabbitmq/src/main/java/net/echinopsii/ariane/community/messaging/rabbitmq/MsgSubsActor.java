@@ -27,8 +27,19 @@ import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsSubsActor;
 
 import java.util.Map;
 
+/**
+ * MsgSubsActor class extending {@link net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsSubsActor} abstract class for RabbitMQ MoM
+ */
 public class MsgSubsActor extends MsgAkkaAbsSubsActor {
 
+    /**
+     * (internal usage only)
+     * Return Akka actor Props to spawn a new MsgRequestActor through Akka.
+     * Should not be called outside {@link net.echinopsii.ariane.community.messaging.rabbitmq.ServiceFactory#subscriberService(String, String, AppMsgWorker)}
+     *
+     * @param worker the AppMsgWorker in charge of subscription message feed treatment
+     * @return Akka actor Props
+     */
     public static Props props(final AppMsgWorker worker) {
         return Props.create(new Creator<MsgSubsActor>() {
             private static final long serialVersionUID = 1L;
@@ -40,12 +51,24 @@ public class MsgSubsActor extends MsgAkkaAbsSubsActor {
         });
     }
 
+    /**
+     * (internal usage only)
+     * MsgSubsActor constructor. Should not be called outside {@link this#props}
+     *
+     * @param worker the AppMsgWorker in charge of subscription message feed treatment
+     */
     public MsgSubsActor(AppMsgWorker worker) {
         super(worker, new MsgTranslator());
     }
 
+    /**
+     * {@link akka.actor.UntypedActor#onReceive(Object)} implementation.
+     * if message instance of {@link com.rabbitmq.client.QueueingConsumer.Delivery} decode the message then request treatment from attached worker.
+     * else unhandled
+     * @param message the akka message received by actor
+     */
     @Override
-    public void onReceive(Object message) throws Exception {
+    public void onReceive(Object message) {
         if (message instanceof QueueingConsumer.Delivery) {
             Envelope envelope = ((QueueingConsumer.Delivery) message).getEnvelope();
             BasicProperties properties = ((QueueingConsumer.Delivery) message).getProperties();

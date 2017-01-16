@@ -32,6 +32,10 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 
+/**
+ * RequestExecutor class extending {@link net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecutor} abstract class
+ * and implements {@link net.echinopsii.ariane.community.messaging.api.MomRequestExecutor} for RabbitMQ MoM.
+ */
 public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomRequestExecutor<String, AppMsgWorker> {
     private static final Logger log = MomLoggerFactory.getLogger(RequestExecutor.class);
 
@@ -50,11 +54,21 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     private Map<String, Object> replyConsumers = new HashMap<>();
     private HashMap<String, Boolean> destinationTrace = new HashMap<>();
 
+    /**
+     * @param client an initialized RabbitMQ Client
+     * @throws IOException in case of RabbitMQ channel creation error.
+     */
     public RequestExecutor(Client client) throws IOException {
         super(client);
         channel = client.getConnection().createChannel();
     }
 
+    /**
+     * Fire And Forget : send request to target destination
+     * @param request the request message
+     * @param destination the target destination queue
+     * @return the sent request
+     */
     @Override
     public Map<String, Object> FAF(Map<String, Object> request, String destination) {
         try {
@@ -81,6 +95,15 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         return request;
     }
 
+    /**
+     * Remote procedure call : send request to target destination and wait answer to be treated by the answer worker.
+     * @param request the request message
+     * @param destination the target destination queue
+     * @param answerSource the source to get the answer from
+     * @param answerWorker the worker object to treat the answer (can be null)
+     * @return the answer (treated or not by answer worker)
+     * @throws TimeoutException if no answers has been receiver after timeout * retry as configured in RabbitMQ Client to this RequestExecutor
+     */
     @Override
     public Map<String, Object> RPC(Map<String, Object> request, String destination, String answerSource, AppMsgWorker answerWorker) throws TimeoutException {
         Map<String, Object> response = null;
@@ -197,12 +220,16 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             }
         }
 
-        if (answerWorker !=null)
+        if (answerWorker!=null)
             response = answerWorker.apply(response);
 
         return response;
     }
 
+    /**
+     * close groupID message group answer subscriptions and clean registry
+     * @param groupID message group ID
+     */
     public void cleanGroupReqResources(String groupID) {
         if (this.sessionsRPCReplyQueues.get(groupID)!=null) {
             for (String queue : this.sessionsRPCReplyQueues.get(groupID)) {
@@ -216,6 +243,10 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         }
     }
 
+    /**
+     * clear and close this RequestExecutor resources
+     * @throws IOException if error occurs when closing RabbitMQ channel
+     */
     public void stop() throws IOException {
         replyConsumers.clear();
         rpcEchangeBindedDestinations.clear();

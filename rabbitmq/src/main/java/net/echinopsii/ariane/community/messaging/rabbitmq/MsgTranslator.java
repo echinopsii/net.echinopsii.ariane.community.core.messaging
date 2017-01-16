@@ -31,6 +31,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * MsgTranslator class implementing {@link net.echinopsii.ariane.community.messaging.api.MomMsgTranslator} interface for RabbitMQ MoM
+ */
 public class MsgTranslator implements MomMsgTranslator<Message>{
 
     public final static String MSG_RBQ_DELIVERY_TAG     = "MSG_RBQ_DELIVERY_TAG";
@@ -41,11 +44,16 @@ public class MsgTranslator implements MomMsgTranslator<Message>{
     public final static String MSG_RBQ_CONTENT_TYPE     = "MSG_RBQ_CONTENT_TYPE";
     public final static String MSG_RBQ_USER_ID          = "MSG_RBQ_USER_ID";
 
+    /**
+     * Encode provide Map message to RabbitMQ friendly Message.
+     * @param message input map message
+     * @return the encoded Message
+     */
     @Override
     public Message encode(Map<String, Object> message) {
         AMQP.BasicProperties.Builder propsBuilder = new AMQP.BasicProperties.Builder();
-        Map<String,Object> headerFields = new HashMap<String, Object>();
-        BasicProperties properties = null;
+        Map<String,Object> headerFields = new HashMap<>();
+        BasicProperties properties;
         byte[] body = null;
 
         for (String key : message.keySet()) {
@@ -91,6 +99,11 @@ public class MsgTranslator implements MomMsgTranslator<Message>{
         return new Message().setProperties(properties).setBody(body);
     }
 
+    /**
+     * Decode given Message into Map message
+     * @param message a RabbitMQ friendly message
+     * @return Map message
+     */
     @Override
     public Map<String, Object> decode(Message message) {
         Envelope envelope = message.getEnvelope();
