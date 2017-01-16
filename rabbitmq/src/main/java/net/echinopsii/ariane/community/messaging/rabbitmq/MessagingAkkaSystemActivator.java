@@ -25,14 +25,24 @@ import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * MessagingAkkaSystemActivator to configure and activate Akka system on OSGI environments
+ */
 public class MessagingAkkaSystemActivator extends ActorSystemActivator {
     private static final Logger log = LoggerFactory.getLogger(MessagingAkkaSystemActivator.class);
     private static ActorSystem system ;
 
+    /**
+     * @return activated actor system
+     */
     public static ActorSystem getSystem() {
         return system;
     }
 
+    /**
+     * @param context the OSGI bundle context
+     * @param system the ActorSystem to use in this bundle context
+     */
     @Override
     public void configure(BundleContext context, ActorSystem system) {
         this.system = system;

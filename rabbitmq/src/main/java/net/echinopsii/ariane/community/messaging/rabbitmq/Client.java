@@ -33,6 +33,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * Client class implementing {@link net.echinopsii.ariane.community.messaging.api.MomClient} interface for RabbitMQ MoM
+ */
 public class Client extends MomAkkaAbsClient implements MomClient {
 
     private static final Logger log = LoggerFactory.getLogger(Client.class);
@@ -45,8 +48,37 @@ public class Client extends MomAkkaAbsClient implements MomClient {
 
     private Connection        connection = null;
 
+    /**
+     * Initialize RabbitMQ connection with provided properties and this client ServiceFactory.
+     * <br/>
+     * Following properties fields MUST be defined :
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_HOST}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_PORT}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#RBQ_VHOST}
+     * <br/>
+     * Following properties fields MAY be defined:
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_USER}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_PSWD}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_CLI_MSG_DEBUG_ON_TIMEOUT}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_CLI_ROUTEES_NB_PER_SERVICE}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_CLI_RPC_TIMEOUT}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_CLI_RPC_RETRY}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#RBQ_INFORMATION_KEY}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#RBQ_PRODUCT_KEY}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#RBQ_PLATFORM_KEY}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#RBQ_COPYRIGHT_KEY}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#RBQ_VERSION_KEY}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#ARIANE_APP_KEY}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#ARIANE_CMP_KEY}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#ARIANE_OSI_KEY}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#ARIANE_OTM_KEY}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#ARIANE_PGURL_KEY}
+     * {@link net.echinopsii.ariane.community.messaging.api.MomClient#ARIANE_PID_KEY}
+     * @param properties configuration properties
+     * @throws IOException if problems to join NATS server
+     */
     @Override
-    public void init(Dictionary properties) throws Exception {
+    public void init(Dictionary properties) throws IOException {
         if (properties.get(MomClient.RBQ_INFORMATION_KEY)!=null)
             super.setClientID((String) properties.get(MomClient.RBQ_INFORMATION_KEY));
         if (properties.get(MOM_CLI_MSG_DEBUG_ON_TIMEOUT)!=null &&
@@ -99,6 +131,11 @@ public class Client extends MomAkkaAbsClient implements MomClient {
         super.setServiceFactory(new ServiceFactory(this));
     }
 
+    /**
+     * Close this client. This will stop any underlying RequestExecutor, Services and Akka supervisors.
+     * It will finally close the RabbitMQ connection
+     * @throws Exception
+     */
     @Override
     public void close() throws IOException {
         for (MomRequestExecutor rexec : super.getRequestExecutors())
@@ -114,16 +151,26 @@ public class Client extends MomAkkaAbsClient implements MomClient {
             connection.close();
     }
 
+    /**
+     * @return true if connected on configured RabbitMQ broker else false
+     */
     @Override
     public boolean isConnected() {
         return connection.isOpen();
     }
 
+    /**
+     * @return the client RabbitMQ connection
+     */
     @Override
     public Connection getConnection() {
         return connection;
     }
 
+    /**
+     * Create a new RequestExecutor and add it into the client request executors registry
+     * @return the fresh new created MomRequestExecutor
+     */
     @Override
     public MomRequestExecutor createRequestExecutor() {
         MomRequestExecutor ret = null;
@@ -136,6 +183,10 @@ public class Client extends MomAkkaAbsClient implements MomClient {
         return ret;
     }
 
+    /**
+     * Close the message group ID and any resources attached to it.
+     * @param groupID the message group ID
+     */
     @Override
     public void closeMsgGroupRequest(String groupID) {
         for (MomRequestExecutor requestExecutor : super.getRequestExecutors())

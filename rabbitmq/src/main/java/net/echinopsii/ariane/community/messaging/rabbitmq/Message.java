@@ -22,6 +22,9 @@ package net.echinopsii.ariane.community.messaging.rabbitmq;
 import com.rabbitmq.client.BasicProperties;
 import com.rabbitmq.client.Envelope;
 
+/**
+ * Message class embedding RabbitMQ Envelope, BasicProperties and adding a body
+ */
 public class Message {
     private Envelope        envelope = null;
     private BasicProperties properties = null;

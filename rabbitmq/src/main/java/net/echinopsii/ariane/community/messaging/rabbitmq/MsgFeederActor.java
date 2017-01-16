@@ -29,12 +29,25 @@ import net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsFeederActor;
 import java.io.IOException;
 import java.util.Map;
 
+/**
+ * MsgFeederActor class extending {@link net.echinopsii.ariane.community.messaging.common.MsgAkkaAbsFeederActor} abstract class for RabbitMQ MoM
+ */
 public class MsgFeederActor extends MsgAkkaAbsFeederActor {
 
     private Connection    connection;
     private Channel       channel ;
 
-    public static Props props(final Client mclient, final String baseDest, final String selector, final AppMsgFeeder feeder) {
+    /**
+     * (internal usage only)
+     * Return Akka actor Props to spawn a new MsgFeederActor through Akka.
+     * Should not be called outside {@link net.echinopsii.ariane.community.messaging.rabbitmq.ServiceFactory#feederService(String, String, int, AppMsgFeeder)}
+     *
+     * @param mclient the initialized RabbitMQ client
+     * @param baseDest the base destination of this feeder
+     * @param selector the selector of this feeder (can be null)
+     * @param feeder the AppMsgFeeder in charge of message feeding
+     * @return Akka actor Props
+     */    public static Props props(final Client mclient, final String baseDest, final String selector, final AppMsgFeeder feeder) {
         return Props.create(new Creator<MsgFeederActor>() {
             private static final long serialVersionUID = 1L;
 
@@ -45,6 +58,16 @@ public class MsgFeederActor extends MsgAkkaAbsFeederActor {
         });
     }
 
+    /**
+     * (internal usage only)
+     * MsgFeederActor constructor. Should not be called outside {@link this#props}
+     * Define the target subject as bDest.selector_ if selector_ is not null else as bDest
+     *
+     * @param mclient the initialized RabbitMQ client
+     * @param bDest the base destination of this feeder
+     * @param selector_ the selector of this feeder (can be null)
+     * @param feeder the AppMsgFeeder in charge of message feeding
+     */
     public MsgFeederActor(Client mclient, String bDest, String selector_, AppMsgFeeder feeder) {
         super(mclient, bDest, selector_, feeder, new MsgTranslator());
         connection = (Connection)super.getClient().getConnection();
@@ -56,9 +79,18 @@ public class MsgFeederActor extends MsgAkkaAbsFeederActor {
         }
     }
 
+    /**
+     * {@link akka.actor.UntypedActor#onReceive(Object)} implementation.
+     * if message is {@link net.echinopsii.ariane.community.messaging.api.AppMsgFeeder#MSG_FEED_NOW} then request new message from feeder
+     * and publish it on this MsgFeederActor subject.
+     * else unhandled
+     *
+     * @param message the akka message received by actor
+     * @throws IOException if problem encountered while publishing message
+     */
     @Override
     public void onReceive(Object message) throws Exception {
-        if (message instanceof String && ((String)message).equals(AppMsgFeeder.MSG_FEED_NOW)) {
+        if (message instanceof String && message.equals(AppMsgFeeder.MSG_FEED_NOW)) {
             Map<String, Object> newFeed = super.getMsgFeeder().apply();
             if (super.getClient().getClientID()!=null)
                 newFeed.put(MsgTranslator.MSG_APPLICATION_ID, super.getClient().getClientID());
