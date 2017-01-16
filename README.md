@@ -134,10 +134,12 @@ TestMsgWorker test = new TestMsgWorker();
 client.getServiceFactory().requestService("FAF_QUEUE", test);
 ```
 
-*Behind the scene:*
+**Behind the scene:**
 a message consumer on "FAF_QUEUE" is created as well as a akka router and several akka routees (5 by default but can be overrided 
 in the configuration with mom_cli.nb_routees_per_service property field).
+
 The message consumer will forward the message as is to the akka router which will then forward the message to one of its routees (round robin). 
+
 The routee is in charge of decoding the message from its technical definition (NATS or RabbitMQ) to the Messaging API message definition (a map !) and 
 finally forward it to the AppMsgWorker through its apply method. 
 
