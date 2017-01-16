@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.util.Dictionary;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Client class implementing {@link net.echinopsii.ariane.community.messaging.api.MomClient} interface for NATS MoM
@@ -57,11 +58,11 @@ public class Client extends MomAkkaAbsClient implements MomClient {
      * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_CLI_RPC_TIMEOUT}
      * {@link net.echinopsii.ariane.community.messaging.api.MomClient#MOM_CLI_RPC_RETRY}
      * {@link net.echinopsii.ariane.community.messaging.api.MomClient#NATS_CONNECTION_NAME}
-     * @param properties
-     * @throws Exception
+     * @param properties configuration properties
+     * @throws IOException or TimeoutException if problems to join NATS server
      */
     @Override
-    public void init(Dictionary properties) throws Exception {
+    public void init(Dictionary properties) throws IOException, TimeoutException {
         if (properties.get(NATS_CONNECTION_NAME)!=null)
             super.setClientID((String) properties.get(NATS_CONNECTION_NAME));
         if (properties.get(MOM_CLI_MSG_DEBUG_ON_TIMEOUT)!=null &&
@@ -118,7 +119,6 @@ public class Client extends MomAkkaAbsClient implements MomClient {
     }
 
     /**
-     *
      * @return the client NATS connection
      */
     @Override
@@ -127,8 +127,7 @@ public class Client extends MomAkkaAbsClient implements MomClient {
     }
 
     /**
-     *
-     * @return true if connected on configured NATS broker
+     * @return true if connected on configured NATS broker else false
      */
     @Override
     public boolean isConnected() {
