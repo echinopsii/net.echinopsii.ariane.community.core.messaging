@@ -46,7 +46,10 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
     private HashMap<String, HashMap<String, SyncSubscription>> sessionsRPCSubs = new HashMap<>();
     private HashMap<String, Boolean> destinationTrace = new HashMap<>();
 
-    public RequestExecutor(Client client) throws IOException {
+    /**
+     * @param client an initialized NATS Client
+     */
+    public RequestExecutor(Client client) {
         super(client);
     }
 
@@ -69,7 +72,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
      * Fire And Forget : send request to target destination and manage message split if needed
      * @param request the request message
      * @param destination the target destination queue
-     * @return the provided request
+     * @return the sent request
      */
     @Override
     public Map<String, Object> FAF(Map<String, Object> request, String destination) {
@@ -118,9 +121,9 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
      * @param request the request message
      * @param destination the target destination queue
      * @param answerSource the source to get the answer from
-     * @param answerWorker the worker object to treat the answer
+     * @param answerWorker the worker object to treat the answer (can be null)
      * @return the answer (treated or not by answer worker)
-     * @throws TimeoutException if no answers has been receiver after timeout * retry
+     * @throws TimeoutException if no answers has been receiver after timeout * retry as configured in NATS Client provided to this RequestExecutor
      */
     @Override
     public Map<String, Object> RPC(Map<String, Object> request, String destination, String answerSource, AppMsgWorker answerWorker) throws TimeoutException {
@@ -270,7 +273,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             }
         }
 
-        if (answerWorker !=null)
+        if (answerWorker!=null)
             response = answerWorker.apply(response);
 
         return response;
@@ -289,6 +292,9 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         }
     }
 
+    /**
+     * clear and close this resources
+     */
     public void stop() {
     }
 }
