@@ -69,7 +69,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
      * Fire And Forget : send request to target destination and manage message split if needed
      * @param request the request message
      * @param destination the target destination queue
-     * @return
+     * @return the provided request
      */
     @Override
     public Map<String, Object> FAF(Map<String, Object> request, String destination) {
