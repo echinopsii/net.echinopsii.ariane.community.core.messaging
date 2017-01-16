@@ -140,13 +140,9 @@ public class Client extends MomAkkaAbsClient implements MomClient {
      */
     @Override
     public MomRequestExecutor createRequestExecutor() {
-        MomRequestExecutor ret = null;
-        try {
-            ret = new RequestExecutor(this);
-            super.getRequestExecutors().add(ret);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        MomRequestExecutor ret ;
+        ret = new RequestExecutor(this);
+        super.getRequestExecutors().add(ret);
         return ret;
     }
 
