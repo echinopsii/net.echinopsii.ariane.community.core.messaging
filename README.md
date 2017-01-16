@@ -9,12 +9,12 @@ This module has been created to avoid JMS over complexity and provide efficient 
 messages flow patterns API to fit Ariane Framework needs. 
 
 The first need was the ability to create [a testing environment simulating trade applications workflow] (https://github.com/echinopsii/net.echinopsii.ariane.scenarios)
-through RabbitMQ first and then [map](https://slack-files.com/T04JMETB8-F1LTAMFGB-4194f337a9) this environment thanks Ariane Framework and the [Ariane RabbitMQ plugin] (https://github.com/echinopsii/net.echinopsii.ariane.community.plugin.rabbitmq).
+through RabbitMQ and then [map](https://slack-files.com/T04JMETB8-F1LTAMFGB-4194f337a9) this environment thanks Ariane Framework and the [Ariane RabbitMQ plugin] (https://github.com/echinopsii/net.echinopsii.ariane.community.plugin.rabbitmq).
 
 As we wanted being able to reuse same messaging API through other messaging middleware we wanted to keep this API as simple as possible. 
 Today we also use this API with [NATS] (http://nats.io/) and Ariane is using it a lot as described [here](http://nats.io/blog/ariane-mapping-microservice-with-nats/).
 
-Finally we wanted to use actor model provided by [Akka](http://akka.io/) to define business logic call back through this API calls - and so being able to reuse Akka powerful tooling like routers.
+Finally we wanted to use actor model provided by [Akka](http://akka.io/) to define the software architecture business logic through this API calls - and so being able to reuse Akka powerful tooling like routers.
 
 # Some technical inputs
 
@@ -99,11 +99,13 @@ Through this pattern you just want to send a request to a server but in this cas
 
 #### Server side
 
-On the server side you first need to create your business logic and then create a service which will listen a request queue and forward messages to your business callback. 
+On the server side you first need to create your business logic and then create a service which will listen a request queue and forward messages to 
+your business callback. 
 
 ```
 import net.echinopsii.ariane.community.messaging.common.MomClientFactory
 import net.echinopsii.ariane.community.messaging.api.MomClient
+import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker
 ...
 
@@ -134,7 +136,8 @@ TestMsgWorker test = new TestMsgWorker();
 client.getServiceFactory().requestService("FAF_QUEUE", test);
 ```
 
-**Behind the scene:**
+##### Behind the scene:
+
 a message consumer on "FAF_QUEUE" is created as well as a akka router and several akka routees (5 by default but can be overrided 
 in the configuration with mom_cli.nb_routees_per_service property field).
 
@@ -145,11 +148,12 @@ finally forward it to the AppMsgWorker through its apply method.
 
 #### Client side 
  
-On the client side you just need to define a message and send your request in fire and forget fashion.
+On the client side you just need to define a message and send your request in fire and forget fashion way.
  
 ```
 import net.echinopsii.ariane.community.messaging.common.MomClientFactory
 import net.echinopsii.ariane.community.messaging.api.MomClient
+import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 ...
 
 // create the message 
@@ -160,7 +164,88 @@ message.put(MomMsgTranslator.MSG_BODY, sendedMsgBody);
 client.createRequestExecutor().FAF(message, "FAF_QUEUE");
 ```
  
-### RPC
+### Remote Procedure Call
+
+Through this pattern you want to send a request to a server and get its reply.
+
+#### Server side
+
+On the server side you first need to create your business logic and then create a service which will listen a request queue and forward messages to 
+your business callback.
+
+```
+import net.echinopsii.ariane.community.messaging.common.MomClientFactory
+import net.echinopsii.ariane.community.messaging.api.MomClient
+import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
+import net.echinopsii.ariane.community.messaging.api.AppMsgWorker
+...
+
+final static String sendedRequestBody = "Hello !";
+final static String sendedReplyBody   = "Hello ! How can I help you ?";
+
+class TestRequestWorker implements AppMsgWorker {
+    
+    @Override
+    public Map<String, Object> apply(Map<String, Object> message) {
+        String recvMsgBody = new String((byte [])message.get(MomMsgTranslator.MSG_BODY));
+
+        Map<String, Object> reply = new HashMap<String, Object>();
+        if (recvMsgBody.equals(sendedRequestBody)) {
+            reply.put(MomMsgTranslator.MSG_RC, MomMsgTranslator.MSG_RET_SUCCESS);
+            reply.put(MomMsgTranslator.MSG_BODY, sendedReplyBody);
+        } else {
+            reply.put(MomMsgTranslator.MSG_RC, MomMsgTranslator.MSG_RET_BAD_REQ);
+            reply.put(MomMsgTranslator.MSG_ERR, "Uuh ? Are you inviding me from Mars ?");
+        }
+
+        return reply;
+    }
+}
+
+TestRequestWorker requestWorker = new TestRequestWorker();
+client.getServiceFactory().requestService("RPC_QUEUE", requestWorker);
+
+```
+
+##### Behind the scene:
+
+There is not so much difference to the fire and forget behavior here. The main difference here is that we return a non null reply in the AppMsgWork.apply 
+method to the akka routees which will then encode it (NATS or RabbitMQ fashion) and send it to the pre defined reply queue.  
+
+#### Client side
+
+On the client side you need to create your business logic for reply, define a message request and send your request in RPC fashion way.
+
+```
+import net.echinopsii.ariane.community.messaging.common.MomClientFactory
+import net.echinopsii.ariane.community.messaging.api.MomClient
+import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
+import net.echinopsii.ariane.community.messaging.api.AppMsgWorker
+...
+
+final static String sendedRequestBody = "Hello !";
+
+class TestReplyWorker implements AppMsgWorker {
+    @Override
+    public Map<String, Object> apply(Map<String, Object> message) {
+        System.out.println(new String((byte [])message.get(MomMsgTranslator.MSG_BODY)));
+        return null;
+    }
+}
+
+Map<String, Object> request = new HashMap<String, Object>();
+request.put(MomMsgTranslator.MSG_BODY, sendedRequestBody);
+client.createRequestExecutor().RPC(request, "RPC_QUEUE", replyWorker);
+```
+
+##### Behind the scene:
+
+Some tips to keep in mind : 
++ the reply queue will be defined and added as a message field if not defined already. 
++ a consumer will be created on the reply queue
++ if no reply is coming after timeout (default is 10 seconds but it can be overidded with mom_cli.rpc_timeout field in configuration)
+then retry will be executed (2 retry by default but can be overidded with mom_cli.rpc_retry field in configuration)
++ when reply is received it will be forward to the AppMsgWorker.apply method else a TimeoutException will be raised.
 
 ### Feeder/Subscriber
 
@@ -168,7 +253,16 @@ client.createRequestExecutor().FAF(message, "FAF_QUEUE");
 
 + Manage TLS/SSL connection to brokers
 + Manage connection on cluster
-+ Provide Google ProtoBuff serialization
++ Provide Google ProtoBuff serialization on NATS implementation (currently JSON)
 + Documentation for actors configuration
 + Documentation for message grouping and session 
 + Documentation for NATS message splitting
+
+# Contributions
+
+We're always happy to get some help from the free community. [Let's get in touch.](mailto:contact@echinopsii.net)
+
+# Reuse 
+
+We're always happy to provide code which serve other purpose than ours. 
+If you want to reuse this code without AGPLv3 license virality, [let's get in touch.](mailto:contact@echinopsii.net) 
