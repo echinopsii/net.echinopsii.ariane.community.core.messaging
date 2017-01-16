@@ -62,8 +62,11 @@ try {
 
 ...
 
+// when closing all resources used by the client will be also closed 
 client.close();
 ```
+
+
 
 ## Simple messages
 
@@ -111,7 +114,7 @@ import net.echinopsii.ariane.community.messaging.api.AppMsgWorker
 
 final static String sendedMsgBody = "Hello !";
 
-class TestMsgWorker implements AppMsgWorker {
+class MyServerMsgWorker implements AppMsgWorker {
 
     boolean OK = false;
 
@@ -130,10 +133,10 @@ class TestMsgWorker implements AppMsgWorker {
 }
 
 // my application business logic 
-TestMsgWorker test = new TestMsgWorker();
+MyServerMsgWorker myServerMsgWorker = new MyServerMsgWorker();
 
 // my service listening to "FAF_QUEUE"
-client.getServiceFactory().requestService("FAF_QUEUE", test);
+client.getServiceFactory().requestService("FAF_QUEUE", myServerMsgWorker);
 ```
 
 ##### Behind the scene:
@@ -155,6 +158,8 @@ import net.echinopsii.ariane.community.messaging.common.MomClientFactory
 import net.echinopsii.ariane.community.messaging.api.MomClient
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 ...
+
+final static String sendedMsgBody = "Hello !";
 
 // create the message 
 Map<String, Object> message = new HashMap<String, Object>();
@@ -183,7 +188,7 @@ import net.echinopsii.ariane.community.messaging.api.AppMsgWorker
 final static String sendedRequestBody = "Hello !";
 final static String sendedReplyBody   = "Hello ! How can I help you ?";
 
-class TestRequestWorker implements AppMsgWorker {
+class MyServerMsgWorker implements AppMsgWorker {
     
     @Override
     public Map<String, Object> apply(Map<String, Object> message) {
@@ -202,8 +207,8 @@ class TestRequestWorker implements AppMsgWorker {
     }
 }
 
-TestRequestWorker requestWorker = new TestRequestWorker();
-client.getServiceFactory().requestService("RPC_QUEUE", requestWorker);
+MyServerMsgWorker myServerMsgWorker = new MyServerMsgWorker();
+client.getServiceFactory().requestService("RPC_QUEUE", myServerMsgWorker);
 
 ```
 
@@ -225,7 +230,7 @@ import net.echinopsii.ariane.community.messaging.api.AppMsgWorker
 
 final static String sendedRequestBody = "Hello !";
 
-class TestReplyWorker implements AppMsgWorker {
+class MyClientReplyWorker implements AppMsgWorker {
     @Override
     public Map<String, Object> apply(Map<String, Object> message) {
         System.out.println(new String((byte [])message.get(MomMsgTranslator.MSG_BODY)));
@@ -233,9 +238,10 @@ class TestReplyWorker implements AppMsgWorker {
     }
 }
 
+MyServerMsgWorker myServerMsgWorker = new MyServerMsgWorker();
 Map<String, Object> request = new HashMap<String, Object>();
 request.put(MomMsgTranslator.MSG_BODY, sendedRequestBody);
-client.createRequestExecutor().RPC(request, "RPC_QUEUE", replyWorker);
+client.createRequestExecutor().RPC(request, "RPC_QUEUE", myClientReplyWorker);
 ```
 
 ##### Behind the scene:
@@ -245,9 +251,82 @@ Some tips to keep in mind :
 + a consumer will be created on the reply queue
 + if no reply is coming after timeout (default is 10 seconds but it can be overidded with mom_cli.rpc_timeout field in configuration)
 then retry will be executed (2 retry by default but can be overidded with mom_cli.rpc_retry field in configuration)
-+ when reply is received it will be forward to the AppMsgWorker.apply method else a TimeoutException will be raised.
++ when reply is received it will be forwarded to the AppMsgWorker.apply method else a TimeoutException will be raised.
 
 ### Feeder/Subscriber
+
+In contrary to FAF and RPC flow patterns which are widely used in Ariane Framework, this feeder/subscriber pattern has been designed for
+our testing environment. Goals here is to regularly feed a bus of messages representing kind of data update. These may change over time and 
+depending your feedbacks.
+ 
+#### Feeder
+
+```
+import net.echinopsii.ariane.community.messaging.common.MomClientFactory
+import net.echinopsii.ariane.community.messaging.api.MomClient
+import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
+import net.echinopsii.ariane.community.messaging.api.AppMsgFeeder
+...
+
+class MyStockFeeder implements AppMsgFeeder {
+
+    private int interval = 100;
+    private String stockName;
+
+    public MyStockFeeder(String sname) {
+        stockName = sname;
+    }
+
+    @Override
+    public Map<String, Object> apply() {
+        Map<String, Object> ret = new HashMap<String, Object>();
+        ret.put("NAME", stockName);
+        int price = (int)(Math.random() * 10 + Math.random() * 100 + Math.random() * 1000);
+        ret.put("PRICE", price );
+        return ret;
+    }
+
+    @Override
+    public int getInterval() {
+        return interval;
+    }
+}
+
+MyStockFeeder feederStockA = new MyStockFeeder("STOCKA");
+MyStockFeeder feederStockB = new MyStockFeeder("STOCKB");
+MyStockFeeder feederStockC = new MyStockFeeder("STOCKC");
+
+client.getServiceFactory().feederService("PRICE", "STOCKA", feederStockA.getInterval(), feederStockA);
+client.getServiceFactory().feederService("PRICE", "STOCKB", feederStockB.getInterval(), feederStockB);
+client.getServiceFactory().feederService("PRICE", "STOCKC", feederStockC.getInterval(), feederStockC);
+```
+
+#### Subscribers
+
+```
+import net.echinopsii.ariane.community.messaging.common.MomClientFactory
+import net.echinopsii.ariane.community.messaging.api.MomClient
+import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
+import net.echinopsii.ariane.community.messaging.api.AppMsgWorker
+...
+
+class StockPriceSubscriber implements AppMsgWorker {
+    @Override
+    public Map<String, Object> apply(Map<String, Object> message) {
+        System.out.println(new String((byte [])message.get("NAME")) + ": " + new String((byte [])message.get("PRICE")));
+        return message;
+    }
+}
+
+StockPriceSubscriber stockSubs    = new StockPriceSubscriber();
+
+//This subscriber will receive all stock price
+client.getServiceFactory().subscriberService("PRICE", null, stockSubs);
+//This subscriber will receive STOCKA price only
+client.getServiceFactory().subscriberService("PRICE", "STOCKA", stockSubs);
+client.getServiceFactory().subscriberService("PRICE", "STOCKB", stockSubs);
+client.getServiceFactory().subscriberService("PRICE", "STOCKC", stockSubs);
+```
 
 # TODO
 
