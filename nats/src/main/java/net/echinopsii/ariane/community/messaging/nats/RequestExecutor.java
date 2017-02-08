@@ -23,6 +23,7 @@ import io.nats.client.Connection;
 import io.nats.client.Message;
 import io.nats.client.SyncSubscription;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.api.MomException;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecutor;
@@ -53,7 +54,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         super(client);
     }
 
-    private void initMsgSplitGroup(String destination, String msgSplitMID, String msgSplitDest) throws TimeoutException {
+    private void initMsgSplitGroup(String destination, String msgSplitMID, String msgSplitDest) throws TimeoutException, IOException, MomException {
         Map<String, Object> request = new HashMap<>();
         request.put(MomMsgTranslator.OPERATION_FDN, MomMsgTranslator.OP_MSG_SPLIT_FEED_INIT);
         request.put(MomMsgTranslator.PARAM_MSG_SPLIT_MID, msgSplitMID);
@@ -61,7 +62,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         this.RPC(request, destination, msgSplitDest + "_INIT_RET", null);
     }
 
-    private void endMsgSplitGroup(String destination, String msgSplitMID, String msgSplitDest) throws TimeoutException {
+    private void endMsgSplitGroup(String destination, String msgSplitMID, String msgSplitDest) throws TimeoutException, IOException, MomException {
         Map<String, Object> request = new HashMap<>();
         request.put(MomMsgTranslator.OPERATION_FDN, MomMsgTranslator.OP_MSG_SPLIT_FEED_INIT);
         request.put(MomMsgTranslator.PARAM_MSG_SPLIT_MID, msgSplitMID);
@@ -89,7 +90,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             try {
                 initMsgSplitGroup(destination, splitMID, destination + "_" + splitMID);
                 destination += "_" + splitMID;
-            } catch (TimeoutException e) {
+            } catch (TimeoutException | IOException | MomException e) {
                 e.printStackTrace();
             }
         }
@@ -107,7 +108,7 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             destination = destination.split("_" + splitMID)[0];
             try {
                 endMsgSplitGroup(destination, splitMID, destination + "_" + splitMID);
-            } catch (TimeoutException e) {
+            } catch (TimeoutException | MomException | IOException e) {
                 e.printStackTrace();
             }
         }
@@ -123,10 +124,13 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
      * @param answerSource the source to get the answer from
      * @param answerWorker the worker object to treat the answer (can be null)
      * @return the answer (treated or not by answer worker)
-     * @throws TimeoutException if no answers has been receiver after timeout * retry as configured in NATS Client provided to this RequestExecutor
+     * @throws TimeoutException if no answers has been received after timeout * retry as configured in NATS Client provided to this RequestExecutor,
+     *         IOException while publishing request or receiving answer,
+     *         MomException if response is null when apply to answerWorker
+     *
      */
     @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, String answerSource, AppMsgWorker answerWorker) throws TimeoutException {
+    public Map<String, Object> RPC(Map<String, Object> request, String destination, String answerSource, AppMsgWorker answerWorker) throws TimeoutException, IOException, MomException {
         Map<String, Object> response = null;
 
         String groupID = super.getMomClient().getCurrentMsgGroup();
@@ -172,96 +176,92 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
             message.setReplyTo(answerSource);
         }
 
-        try {
-            Message[] msgResponse = null;
-            Message wipMsgResponse = null;
-            long beginWaitingAnswer;
+        Message[] msgResponse = null;
+        Message wipMsgResponse = null;
+        long beginWaitingAnswer;
 
-            SyncSubscription subs;
-            if (groupID!=null) {
-                if (sessionsRPCSubs.get(groupID) != null) {
-                    if (sessionsRPCSubs.get(groupID).get(answerSource) != null) subs = sessionsRPCSubs.get(groupID).get(answerSource);
-                    else {
-                        subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
-                        sessionsRPCSubs.get(groupID).put(answerSource, subs);
-                    }
-                } else {
-                    HashMap<String, SyncSubscription> groupSubs = new HashMap<>();
+        SyncSubscription subs;
+        if (groupID!=null) {
+            if (sessionsRPCSubs.get(groupID) != null) {
+                if (sessionsRPCSubs.get(groupID).get(answerSource) != null) subs = sessionsRPCSubs.get(groupID).get(answerSource);
+                else {
                     subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
-                    groupSubs.put(answerSource, subs);
-                    sessionsRPCSubs.put(groupID, groupSubs);
+                    sessionsRPCSubs.get(groupID).put(answerSource, subs);
                 }
-            } else subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
-
-            if (destinationTrace.get(destination)) log.info("send request " + corrId);
-            for (Message message:messages)
-                ((Connection) super.getMomClient().getConnection()).publish(message);
-
-            long rpcTimeout = super.getMomClient().getRPCTimout() * 1000000000;
-            beginWaitingAnswer = System.nanoTime();
-            int responseSplitCount = 1;
-            int responseMsgCount = 0;
-            while(wipMsgResponse==null && responseMsgCount < responseSplitCount && rpcTimeout >= 0) {
-                try {
-                    wipMsgResponse = subs.nextMessage(rpcTimeout, TimeUnit.NANOSECONDS);
-                    if (wipMsgResponse!=null) {
-                        Map<String, Object> tmpDecodedMsg = new MsgTranslator().decode(new Message[]{wipMsgResponse});
-                        String responseCorrID = (String) tmpDecodedMsg.get(MsgTranslator.MSG_CORRELATION_ID);
-                        if (responseCorrID != null && !responseCorrID.equals(corrId)) {
-                            log.warn("Response discarded ( " + responseCorrID + " ) ...");
-                            wipMsgResponse = null;
-                        } else {
-                            if (msgResponse==null) {
-                                responseSplitCount = (int) ((tmpDecodedMsg.get(MsgTranslator.MSG_SPLIT_COUNT)!=null) ? tmpDecodedMsg.get(MsgTranslator.MSG_SPLIT_COUNT) : 1);
-                                msgResponse = new Message[responseSplitCount];
-                            }
-                            int splitOID = (int) ((tmpDecodedMsg.get(MsgTranslator.MSG_SPLIT_OID)!=null) ? tmpDecodedMsg.get(MsgTranslator.MSG_SPLIT_OID) : 0);
-                            msgResponse[splitOID] = wipMsgResponse;
-                            wipMsgResponse = null;
-                            responseMsgCount++;
-                        }
-                    }
-                } catch (InterruptedException | TimeoutException ex) {
-                    log.debug("Thread interrupted while waiting for RPC answer...");
-                } finally {
-                    if (super.getMomClient().getRPCTimout()>0)
-                        rpcTimeout = super.getMomClient().getRPCTimout()*1000000000 - (System.nanoTime()-beginWaitingAnswer);
-                    else rpcTimeout = 0;
-                    if (destinationTrace.get(destination)) log.info("rpcTimeout left: " + rpcTimeout);
-                }
-            }
-            if (groupID==null) subs.close();
-
-            if (msgResponse!=null) {
-                long endWaitingAnswer = System.nanoTime();
-                long rpcTime = endWaitingAnswer - beginWaitingAnswer;
-                log.debug("RPC time : " + rpcTime);
-                if (super.getMomClient().getRPCTimout()>0 && beginWaitingAnswer>0 && rpcTime > super.getMomClient().getRPCTimout()*1000000000*3/5) {
-                    log.debug("Slow RPC time (" + rpcTime/1000000000 + ") on request to queue " + destination);
-                } else destinationTrace.put(destination, false);
-                response = new MsgTranslator().decode(msgResponse);
             } else {
-                if (request.containsKey(MomMsgTranslator.MSG_RETRY_COUNT)) {
-                    int retryCount = (int)request.get(MomMsgTranslator.MSG_RETRY_COUNT);
-                    log.warn("No response returned from request on " + destination + " queue after (" +
-                            super.getMomClient().getRPCTimout() + "*" + retryCount + 1 + ") sec...");
-                    if ((super.getMomClient().getRPCRetry()-retryCount+1) > 0) {
-                        request.put(MomMsgTranslator.MSG_RETRY_COUNT, retryCount+1);
-                        destinationTrace.put(destination, true);
-                        log.warn("Retry (" + request.get(MomMsgTranslator.MSG_RETRY_COUNT) + ")");
-                        return this.RPC(request, destination, answerSource, answerWorker);
-                    } else
-                        throw new TimeoutException(
-                                "No response returned from request on " + destination + " queue after " +
-                                        super.getMomClient().getRPCTimout() + "*" + super.getMomClient().getRPCRetry() + " sec..."
-                        );
-                } else {
-                    request.put(MomMsgTranslator.MSG_RETRY_COUNT, 1);
-                    return this.RPC(request, destination, answerSource, answerWorker);
-                }
+                HashMap<String, SyncSubscription> groupSubs = new HashMap<>();
+                subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
+                groupSubs.put(answerSource, subs);
+                sessionsRPCSubs.put(groupID, groupSubs);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } else subs = ((Connection)super.getMomClient().getConnection()).subscribeSync(answerSource);
+
+        if (destinationTrace.get(destination)) log.info("send request " + corrId);
+        for (Message message:messages)
+            ((Connection) super.getMomClient().getConnection()).publish(message);
+
+        long rpcTimeout = super.getMomClient().getRPCTimout() * 1000000000;
+        beginWaitingAnswer = System.nanoTime();
+        int responseSplitCount = 1;
+        int responseMsgCount = 0;
+        while(wipMsgResponse==null && responseMsgCount < responseSplitCount && rpcTimeout >= 0) {
+            try {
+                wipMsgResponse = subs.nextMessage(rpcTimeout, TimeUnit.NANOSECONDS);
+                if (wipMsgResponse!=null) {
+                    Map<String, Object> tmpDecodedMsg = new MsgTranslator().decode(new Message[]{wipMsgResponse});
+                    String responseCorrID = (String) tmpDecodedMsg.get(MsgTranslator.MSG_CORRELATION_ID);
+                    if (responseCorrID != null && !responseCorrID.equals(corrId)) {
+                        log.warn("Response discarded ( " + responseCorrID + " ) ...");
+                        wipMsgResponse = null;
+                    } else {
+                        if (msgResponse==null) {
+                            responseSplitCount = (int) ((tmpDecodedMsg.get(MsgTranslator.MSG_SPLIT_COUNT)!=null) ? tmpDecodedMsg.get(MsgTranslator.MSG_SPLIT_COUNT) : 1);
+                            msgResponse = new Message[responseSplitCount];
+                        }
+                        int splitOID = (int) ((tmpDecodedMsg.get(MsgTranslator.MSG_SPLIT_OID)!=null) ? tmpDecodedMsg.get(MsgTranslator.MSG_SPLIT_OID) : 0);
+                        msgResponse[splitOID] = wipMsgResponse;
+                        wipMsgResponse = null;
+                        responseMsgCount++;
+                    }
+                }
+            } catch (InterruptedException | TimeoutException ex) {
+                log.debug("Thread interrupted while waiting for RPC answer...");
+            } finally {
+                if (super.getMomClient().getRPCTimout()>0)
+                    rpcTimeout = super.getMomClient().getRPCTimout()*1000000000 - (System.nanoTime()-beginWaitingAnswer);
+                else rpcTimeout = 0;
+                if (destinationTrace.get(destination)) log.info("rpcTimeout left: " + rpcTimeout);
+            }
+        }
+        if (groupID==null) subs.close();
+
+        if (msgResponse!=null) {
+            long endWaitingAnswer = System.nanoTime();
+            long rpcTime = endWaitingAnswer - beginWaitingAnswer;
+            log.debug("RPC time : " + rpcTime);
+            if (super.getMomClient().getRPCTimout()>0 && beginWaitingAnswer>0 && rpcTime > super.getMomClient().getRPCTimout()*1000000000*3/5) {
+                log.debug("Slow RPC time (" + rpcTime/1000000000 + ") on request to queue " + destination);
+            } else destinationTrace.put(destination, false);
+            response = new MsgTranslator().decode(msgResponse);
+        } else {
+            if (request.containsKey(MomMsgTranslator.MSG_RETRY_COUNT)) {
+                int retryCount = (int)request.get(MomMsgTranslator.MSG_RETRY_COUNT);
+                log.warn("No response returned from request on " + destination + " queue after (" +
+                        super.getMomClient().getRPCTimout() + "*" + retryCount + 1 + ") sec...");
+                if ((super.getMomClient().getRPCRetry()-retryCount+1) > 0) {
+                    request.put(MomMsgTranslator.MSG_RETRY_COUNT, retryCount+1);
+                    destinationTrace.put(destination, true);
+                    log.warn("Retry (" + request.get(MomMsgTranslator.MSG_RETRY_COUNT) + ")");
+                    return this.RPC(request, destination, answerSource, answerWorker);
+                } else
+                    throw new TimeoutException(
+                            "No response returned from request on " + destination + " queue after " +
+                                    super.getMomClient().getRPCTimout() + "*" + super.getMomClient().getRPCRetry() + " sec..."
+                    );
+            } else {
+                request.put(MomMsgTranslator.MSG_RETRY_COUNT, 1);
+                return this.RPC(request, destination, answerSource, answerWorker);
+            }
         }
 
         if (groupID==null && messages.length>1) {
@@ -274,7 +274,8 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         }
 
         if (answerWorker!=null)
-            response = answerWorker.apply(response);
+            if (response!=null) response = answerWorker.apply(response);
+            else throw new MomException("Response to apply on answerWorker is null !?");
 
         return response;
     }

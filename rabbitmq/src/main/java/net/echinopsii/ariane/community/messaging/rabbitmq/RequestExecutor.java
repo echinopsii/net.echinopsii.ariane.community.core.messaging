@@ -22,6 +22,7 @@ package net.echinopsii.ariane.community.messaging.rabbitmq;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.QueueingConsumer;
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.api.MomException;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsRequestExecutor;
@@ -103,90 +104,88 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
      * @param answerWorker the worker object to treat the answer (can be null)
      * @return the answer (treated or not by answer worker)
      * @throws TimeoutException if no answers has been receiver after timeout * retry as configured in RabbitMQ Client to this RequestExecutor
+     *         IOException while publishing request or receiving answer,
+     *         MomException if response is null when apply to answerWorker
      */
     @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, String answerSource, AppMsgWorker answerWorker) throws TimeoutException {
+    public Map<String, Object> RPC(Map<String, Object> request, String destination, String answerSource, AppMsgWorker answerWorker) throws TimeoutException, IOException, MomException {
         Map<String, Object> response = null;
         QueueingConsumer.Delivery delivery = null;
         long beginWaitingAnswer = 0;
-        try {
-            String groupID = super.getMomClient().getCurrentMsgGroup();
-            if (groupID!=null && !destination.contains(groupID)) {
-                destination = groupID + "-" + destination;
-                if (answerSource ==null) answerSource = destination + "-RET";
-                if (this.sessionsRPCReplyQueues.get(groupID)==null)
-                    this.sessionsRPCReplyQueues.put(groupID, new ArrayList<String>());
-                this.sessionsRPCReplyQueues.get(groupID).add(answerSource);
-            }
+        String groupID = super.getMomClient().getCurrentMsgGroup();
+        if (groupID!=null && !destination.contains(groupID)) {
+            destination = groupID + "-" + destination;
+            if (answerSource ==null) answerSource = destination + "-RET";
+            if (this.sessionsRPCReplyQueues.get(groupID)==null)
+                this.sessionsRPCReplyQueues.put(groupID, new ArrayList<String>());
+            this.sessionsRPCReplyQueues.get(groupID).add(answerSource);
+        }
 
-            if (!is_rpc_exchange_declared) {
-                channel.exchangeDeclare(RPC_EXCHANGE, EXCHANGE_TYPE_DIRECT);
-                is_rpc_exchange_declared = true;
-            }
-            if (!rpcEchangeBindedDestinations.contains(destination)) {
-                channel.queueDeclare(destination, false, false, true, null);
-                channel.queueBind(destination, RPC_EXCHANGE, destination);
-                rpcEchangeBindedDestinations.add(destination);
-            }
-            if (destinationTrace.get(destination)==null) destinationTrace.put(destination, false);
+        if (!is_rpc_exchange_declared) {
+            channel.exchangeDeclare(RPC_EXCHANGE, EXCHANGE_TYPE_DIRECT);
+            is_rpc_exchange_declared = true;
+        }
+        if (!rpcEchangeBindedDestinations.contains(destination)) {
+            channel.queueDeclare(destination, false, false, true, null);
+            channel.queueBind(destination, RPC_EXCHANGE, destination);
+            rpcEchangeBindedDestinations.add(destination);
+        }
+        if (destinationTrace.get(destination)==null) destinationTrace.put(destination, false);
 
-            String replyQueueName;
-            if (answerSource ==null) replyQueueName = channel.queueDeclare().getQueue();
-            else replyQueueName = answerSource;
+        String replyQueueName;
+        if (answerSource ==null) replyQueueName = channel.queueDeclare().getQueue();
+        else replyQueueName = answerSource;
 
-            QueueingConsumer consumer;
-            if (replyConsumers.get(replyQueueName)!=null) consumer = (QueueingConsumer) replyConsumers.get(replyQueueName);
-            else {
-                if (answerSource !=null) channel.queueDeclare(replyQueueName, false, true, true, null);
-                consumer = new QueueingConsumer(channel);
-                channel.basicConsume(replyQueueName, true, consumer);
-                replyConsumers.put(replyQueueName, consumer);
+        QueueingConsumer consumer;
+        if (replyConsumers.get(replyQueueName)!=null) consumer = (QueueingConsumer) replyConsumers.get(replyQueueName);
+        else {
+            if (answerSource !=null) channel.queueDeclare(replyQueueName, false, true, true, null);
+            consumer = new QueueingConsumer(channel);
+            channel.basicConsume(replyQueueName, true, consumer);
+            replyConsumers.put(replyQueueName, consumer);
+        }
+
+        String corrId;
+        if (request.get(MsgTranslator.MSG_CORRELATION_ID)==null) {
+            synchronized (UUID.class) {
+                corrId = UUID.randomUUID().toString();
             }
+            request.put(MsgTranslator.MSG_CORRELATION_ID, corrId);
+        } else corrId = (String) request.get(MsgTranslator.MSG_CORRELATION_ID);
+        request.put(MsgTranslator.MSG_REPLY_TO, replyQueueName);
 
-            String corrId;
-            if (request.get(MsgTranslator.MSG_CORRELATION_ID)==null) {
-                synchronized (UUID.class) {
-                    corrId = UUID.randomUUID().toString();
+        if (super.getMomClient().getClientID()!=null)
+            request.put(MomMsgTranslator.MSG_APPLICATION_ID, super.getMomClient().getClientID());
+
+        if (destinationTrace.get(destination)) request.put(MomMsgTranslator.MSG_TRACE, true);
+        else request.remove(MomMsgTranslator.MSG_TRACE);
+
+        if (destinationTrace.get(destination)) log.info("send request " + corrId);
+        Message message = new MsgTranslator().encode(request);
+        channel.basicPublish(RPC_EXCHANGE, destination, (com.rabbitmq.client.AMQP.BasicProperties) message.getProperties(), message.getBody());
+
+        long rpcTimeout = super.getMomClient().getRPCTimout() * 1000;
+        beginWaitingAnswer = System.nanoTime();
+        while (delivery==null && rpcTimeout>=0) {
+            try {
+                delivery = consumer.nextDelivery(rpcTimeout);
+                if (delivery!=null) {
+                    if (!delivery.getProperties().getCorrelationId().equals(corrId))
+                        log.warn("Response discarded ( " + delivery.getProperties().getCorrelationId() + " ) ...");
                 }
-                request.put(MsgTranslator.MSG_CORRELATION_ID, corrId);
-            } else corrId = (String) request.get(MsgTranslator.MSG_CORRELATION_ID);
-            request.put(MsgTranslator.MSG_REPLY_TO, replyQueueName);
-
-            if (super.getMomClient().getClientID()!=null)
-                request.put(MomMsgTranslator.MSG_APPLICATION_ID, super.getMomClient().getClientID());
-
-            if (destinationTrace.get(destination)) request.put(MomMsgTranslator.MSG_TRACE, true);
-            else request.remove(MomMsgTranslator.MSG_TRACE);
-
-            if (destinationTrace.get(destination)) log.info("send request " + corrId);
-            Message message = new MsgTranslator().encode(request);
-            channel.basicPublish(RPC_EXCHANGE, destination, (com.rabbitmq.client.AMQP.BasicProperties) message.getProperties(), message.getBody());
-
-            long rpcTimeout = super.getMomClient().getRPCTimout() * 1000;
-            beginWaitingAnswer = System.nanoTime();
-            while (delivery==null && rpcTimeout>=0) {
-                try {
-                    delivery = consumer.nextDelivery(rpcTimeout);
-                    if (delivery!=null) {
-                        if (!delivery.getProperties().getCorrelationId().equals(corrId))
-                            log.warn("Response discarded ( " + delivery.getProperties().getCorrelationId() + " ) ...");
-                    }
-                } catch (InterruptedException e) {
-                    log.debug("Thread interrupted while waiting for RPC answer...");
-                } finally {
-                    if (super.getMomClient().getRPCTimout()>0)
-                        rpcTimeout = (super.getMomClient().getRPCTimout()*1000000000 - (System.nanoTime()-beginWaitingAnswer))/1000000;
-                    else rpcTimeout = 0;
-                    if (destinationTrace.get(destination)) log.info("rpcTimeout left: " + rpcTimeout);
-                }
+            } catch (InterruptedException e) {
+                log.debug("Thread interrupted while waiting for RPC answer...");
+            } finally {
+                if (super.getMomClient().getRPCTimout()>0)
+                    rpcTimeout = (super.getMomClient().getRPCTimout()*1000000000 - (System.nanoTime()-beginWaitingAnswer))/1000000;
+                else rpcTimeout = 0;
+                if (destinationTrace.get(destination)) log.info("rpcTimeout left: " + rpcTimeout);
             }
+        }
 
-            if (answerSource == null) {
-                channel.queueDelete(replyQueueName);
-                replyConsumers.remove(replyQueueName);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (answerSource == null) {
+            channel.queueDelete(replyQueueName);
+            replyConsumers.remove(replyQueueName);
         }
 
         if (delivery!=null) {
@@ -221,7 +220,8 @@ public class RequestExecutor extends MomAkkaAbsRequestExecutor implements MomReq
         }
 
         if (answerWorker!=null)
-            response = answerWorker.apply(response);
+            if (response!=null) response = answerWorker.apply(response);
+            else throw new MomException("Response to apply on answerWorker is null !?");
 
         return response;
     }

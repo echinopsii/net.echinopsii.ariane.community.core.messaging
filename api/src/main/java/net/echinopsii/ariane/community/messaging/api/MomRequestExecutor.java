@@ -19,6 +19,7 @@
 
 package net.echinopsii.ariane.community.messaging.api;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
@@ -48,8 +49,11 @@ public interface MomRequestExecutor<Q, W extends AppMsgWorker> {
      * @param destination the target destination queue
      * @param answerWorker the worker object to treat the answer
      * @return the answer message
+     * @throws TimeoutException if no answers has been received after timeout * retry,
+     *         IOException while publishing request or receiving answer,
+     *         MomException if response is null when apply to answerWorker
      */
-    Map<String, Object> RPC(Map<String, Object> request, Q destination, W answerWorker) throws TimeoutException;
+    Map<String, Object> RPC(Map<String, Object> request, Q destination, W answerWorker)  throws TimeoutException, IOException, MomException;
 
     /**
      * send a request and get the answer from specified answer source
@@ -58,7 +62,9 @@ public interface MomRequestExecutor<Q, W extends AppMsgWorker> {
      * @param answerSource the source to get the answer from
      * @param answerWorker the worker object to treat the answer
      * @return the answer message
-     * @throws TimeoutException
+     * @throws TimeoutException if no answers has been received after timeout * retry,
+     *         IOException while publishing request or receiving answer,
+     *         MomException if response is null when apply to answerWorker
      */
-    Map<String, Object> RPC(Map<String, Object> request, Q destination, Q answerSource, W answerWorker) throws TimeoutException;
+    Map<String, Object> RPC(Map<String, Object> request, Q destination, Q answerSource, W answerWorker)  throws TimeoutException, IOException, MomException;
 }

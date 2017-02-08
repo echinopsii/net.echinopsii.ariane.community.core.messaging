@@ -21,6 +21,7 @@ package net.echinopsii.ariane.community.messaging.rabbitmq;
 
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
+import net.echinopsii.ariane.community.messaging.api.MomException;
 import net.echinopsii.ariane.community.messaging.common.MomClientFactory;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import org.junit.AfterClass;
@@ -112,7 +113,7 @@ public class RPCTest {
     }
 
     @Test
-    public void testRPC() throws InterruptedException, TimeoutException {
+    public void testRPC() throws InterruptedException, TimeoutException, IOException, MomException {
         if (client!=null) {
             TestRequestWorker requestWorker = new TestRequestWorker();
             TestReplyWorker   replyWorker   = new TestReplyWorker();

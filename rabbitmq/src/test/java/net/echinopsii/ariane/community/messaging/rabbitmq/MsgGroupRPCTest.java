@@ -21,6 +21,7 @@ package net.echinopsii.ariane.community.messaging.rabbitmq;
 
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
 import net.echinopsii.ariane.community.messaging.api.MomClient;
+import net.echinopsii.ariane.community.messaging.api.MomException;
 import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import net.echinopsii.ariane.community.messaging.common.MomClientFactory;
 import org.junit.AfterClass;
@@ -160,14 +161,14 @@ public class MsgGroupRPCTest {
         }
     }
 
-    private void openSession() throws TimeoutException {
+    private void openSession() throws TimeoutException, IOException, MomException {
         Map<String, Object> request = new HashMap<String, Object>();
         request.put("OP", "OPEN_SESSION");
         String sessionID = (String) client.createRequestExecutor().RPC(request, "SESSION_SUBJECT", sessionRequestWorker).get("SESSION_ID");
         client.openMsgGroupRequest(sessionID);
     }
 
-    private void closeSession() throws TimeoutException {
+    private void closeSession() throws TimeoutException, IOException, MomException {
         String sessionID = client.getCurrentMsgGroup();
         client.closeMsgGroupRequest(sessionID);
         Map<String, Object> request = new HashMap<String, Object>();
@@ -177,7 +178,7 @@ public class MsgGroupRPCTest {
     }
 
     @Test
-    public void testGroupRPC() throws InterruptedException, TimeoutException {
+    public void testGroupRPC() throws InterruptedException, TimeoutException, IOException, MomException {
         if (client!=null) {
             openSession();
 

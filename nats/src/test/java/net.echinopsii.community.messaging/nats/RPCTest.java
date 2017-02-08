@@ -19,12 +19,9 @@
 
 package net.echinopsii.community.messaging.nats;
 
-import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
-import net.echinopsii.ariane.community.messaging.api.MomClient;
-import net.echinopsii.ariane.community.messaging.api.MomServiceFactory;
+import net.echinopsii.ariane.community.messaging.api.*;
 import net.echinopsii.ariane.community.messaging.common.MomAkkaAbsAppHPMsgSrvWorker;
 import net.echinopsii.ariane.community.messaging.common.MomClientFactory;
-import net.echinopsii.ariane.community.messaging.api.MomMsgTranslator;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -119,7 +116,7 @@ public class RPCTest {
     }
 
     @Test
-    public void testRPC() throws InterruptedException, TimeoutException {
+    public void testRPC() throws InterruptedException, TimeoutException, IOException, MomException {
         if (client!=null) {
             TestRequestWorker requestWorker = new TestRequestWorker(client.getServiceFactory(), sendedRequestBody.getBytes(), sendedReplyBody.getBytes());
             TestReplyWorker   replyWorker   = new TestReplyWorker(sendedReplyBody.getBytes());
@@ -140,7 +137,7 @@ public class RPCTest {
     }
 
     @Test
-    public void testHighPayloadRPC_1() throws InterruptedException, TimeoutException {
+    public void testHighPayloadRPC_1() throws InterruptedException, TimeoutException, IOException, MomException {
         if (client!=null) {
             for (int i=0; i < highPayloadBody.length; i+=4) {
                 byte[] intBytes = ByteBuffer.allocate(4).putInt(i).array();
@@ -166,7 +163,7 @@ public class RPCTest {
     }
 
     @Test
-    public void testHighPayloadRPC_2() throws InterruptedException, TimeoutException {
+    public void testHighPayloadRPC_2() throws InterruptedException, TimeoutException, IOException, MomException {
         if (client!=null) {
             for (int i=0; i < highPayloadBody.length; i+=4) {
                 byte[] intBytes = ByteBuffer.allocate(4).putInt(i).array();
@@ -192,7 +189,7 @@ public class RPCTest {
     }
 
     @Test
-    public void testHighPayloadRPC_3() throws InterruptedException, TimeoutException {
+    public void testHighPayloadRPC_3() throws InterruptedException, TimeoutException, IOException, MomException {
         if (client!=null) {
             for (int i=0; i < highPayloadBody.length; i+=4) {
                 byte[] intBytes = ByteBuffer.allocate(4).putInt(i).array();

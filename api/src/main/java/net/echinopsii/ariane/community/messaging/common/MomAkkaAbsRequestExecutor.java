@@ -20,8 +20,10 @@
 package net.echinopsii.ariane.community.messaging.common;
 
 import net.echinopsii.ariane.community.messaging.api.AppMsgWorker;
+import net.echinopsii.ariane.community.messaging.api.MomException;
 import net.echinopsii.ariane.community.messaging.api.MomRequestExecutor;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
@@ -53,10 +55,12 @@ public abstract class MomAkkaAbsRequestExecutor implements MomRequestExecutor<St
      * @param destination the target destination queue
      * @param answerWorker the worker object to treat the answer
      * @return the reply of this rpc
-     * @throws TimeoutException when no reply comes after momClient.rpcRetry * momClient.rpcTimeout (sec)
+     * @throws TimeoutException if no answers has been received after timeout * retry,
+     *         IOException while publishing request or receiving answer,
+     *         MomException if response is null when apply to answerWorker
      */
     @Override
-    public Map<String, Object> RPC(Map<String, Object> request, String destination, AppMsgWorker answerWorker) throws TimeoutException {
+    public Map<String, Object> RPC(Map<String, Object> request, String destination, AppMsgWorker answerWorker) throws TimeoutException, IOException, MomException {
         return RPC(request, destination, null, answerWorker);
     }
 }
