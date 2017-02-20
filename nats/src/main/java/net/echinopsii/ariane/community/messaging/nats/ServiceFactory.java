@@ -128,7 +128,10 @@ public class ServiceFactory extends MomAkkaAbsServiceFactory implements MomServi
                         } catch (IllegalStateException | IOException | InterruptedException e) {
                             if (finalMessage!=null && client.isMsgDebugOnTimeout() &&
                                     ((HashMap)finalMessage).containsKey(MomMsgTranslator.MSG_TRACE)) ((MomLogger)log).setMsgTraceLevel(false);
-                            if (isRunning) log.error("[source: " + source + "]" + e.getMessage());
+                            if (isRunning) {
+                                log.error("[source: " + source + "]" + e.getMessage());
+                                if (connection.isClosed()) this.stop();
+                            }
                         }
                     }
                 } catch (Exception e) {
