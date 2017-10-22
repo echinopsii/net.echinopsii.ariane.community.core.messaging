@@ -353,7 +353,9 @@ public class MsgTranslator implements MomMsgTranslator<Message[]> {
                     decodedMessage.put(MSG_REPLY_TO, messagePart.getReplyTo());
                     decodedMessage.put(MSG_NATS_SUBJECT, messagePart.getSubject());
                     decodedMessage.putAll(extendedNATSMessage.getProperties());
-                    if (extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) == null || extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) == 1)
+                    if (extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) == null ||
+                            (extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) instanceof Integer &&
+                            (int)extendedNATSMessage.getProperties().get(MSG_SPLIT_COUNT) == 1))
                         decodedMessage.put(MSG_BODY, extendedNATSMessage.getBody());
                     else {
                         int splitCount = -1 ;
