@@ -47,7 +47,7 @@ public class MessagingAkkaSystemActivator extends ActorSystemActivator {
      */
     @Override
     public void configure(BundleContext context, ActorSystem system) {
-        this.system = system;
+        MessagingAkkaSystemActivator.system = system;
         log.info("Ariane Messaging NATS Akka System activated");
     }
 }
